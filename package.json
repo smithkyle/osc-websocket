@@ -1,0 +1,14 @@
+{
+  "name": "osc-sibelius-connect",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sibelius-connect.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kyle Smith",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
