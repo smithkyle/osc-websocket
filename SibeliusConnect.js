@@ -8,14 +8,16 @@ class SibeliusConnect {
         this.plugins = plugins;
         this.socket = null;
         this.sessionToken = null;
-        this.sessionTokenFile = 'sibeliusSessionToken.json';
         this.retryTimeout = 2000;
         this.messageQueue = [];
         this.isConnecting = false;
+        this.isReconnecting = false;
         this.handshakeDone = false;
     }
 
     connect() {
+        console.log('Connecting')
+
         if (this.isConnecting) {
             return;
         }
@@ -24,56 +26,61 @@ class SibeliusConnect {
         this.socket = new WebSocket(this.url);
 
         this.socket.onopen = () => {
+            console.log('Connected - initiating handshake')
+            this.isReconnecting = false;
             this.sendHandshake();
         };
 
         this.socket.onmessage = (event) => {
-            console.log('Received message:', event.data);
+            // console.log('Received message:', event.data);
             const data = JSON.parse(event.data);
 
             if ('sessionToken' in data) {
                 this.sessionToken = data.sessionToken;
                 console.log('Received sessionToken:', this.sessionToken);
-                // saveJSON(this.sessionTokenFile, { sessionToken: this.sessionToken });
             }
         };
 
         this.socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            console.error('WebSocket error:', error.message);
         };
 
         this.socket.onclose = (event) => {
             if (event.code === 1000) {
-                console.log('WebSocket connection closed cleanly.');
+                console.log('WebSocket connection closed cleanly');
+                this.sessionToken = null
             } else {
-                console.log('closed - reconnecting')
-                this.retry();
+                if (!this.isConnecting) {
+                    console.log('WebSocket closed - reconnecting')
+                    this.retry();
+                }
             }
         };
 
-        this.isConnecting = false;
+        this.isConnecting = this.isReconnecting = false;
     }
 
     sendHandshake() {
+        console.log('Shaking hands')
+
         const message = {
             handshakeVersion: '1.0',
             clientName: this.appName,
             message: 'connect',
         };
-
-        this.loadSessionToken();
+        
         if (this.sessionToken !== null && !this.connected) {
             message.sessionToken = this.sessionToken;
         }
         else if (this.plugins.length > 0) {
             message.plugins = this.plugins
         }
-
+        
         this.socket.send(JSON.stringify(message));
-        this.handshakeDone = true; // Set flag indicating connect message has been sent
+        this.handshakeDone = true;
 
         // Send queued messages after connect message is sent
-        this.sendQueuedMessages();
+        // this.sendQueuedMessages();
     }
 
     sendQueuedMessages() {
@@ -85,60 +92,32 @@ class SibeliusConnect {
 
     sendMessage(message) {
         this.messageQueue.push(message);
-        
+        console.log(message)
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-            if (!this.isConnecting) {
+            if (!this.isConnecting && !this.isReconnecting) {
                 this.connect();
             }
         } else {
-            if (!this.handshakeDone) {
-                this.sendHandshake();
-            } else {
+            if (this.handshakeDone) {
                 this.sendQueuedMessages();
             }
         }
     }
 
     retry() {
-        setTimeout(() => {
-            this.connect();
-        }, this.retryTimeout);
+        console.log('Attempting to reconnect')
+
+        if (!this.isReconnecting) {
+            this.isReconnecting = true;
+            setTimeout(() => {
+                this.connect();
+            }, this.retryTimeout);
+        }
     }
 
     close() {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.close(1000, 'Unload');
-        }
-        // Remove session token file
-        // this.removeSessionTokenFile();
-    }
-
-    saveSessionToken() {
-        console.log('session token saved')
-        saveJSON('sibeliusSessionToken.json', { sessionToken: this.sessionToken });
-    }
-    
-    loadSessionToken() {
-        console.log('checking for existing sessionToken')
-        const data = loadJSON(this.sessionTokenFile, () => {
-            this.sessionToken = null;
-        });
-        if (data && data.sessionToken) {
-            this.sessionToken = data.sessionToken;
-            console.log(`existing sessionToken found: ${this.sessionToken}`)
-            this.removeSessionTokenFile()
-        }
-    }
-
-    removeSessionTokenFile() {
-        const filePath = __filename.replace('SibeliusConnect.js', this.sessionTokenFile);
-        if (fs.existsSync(filePath)) {
-            try {
-                fs.unlinkSync(filePath);
-                console.log('Session Token file removed:', filePath);
-            } catch (err) {
-                console.error('Error removing file:', err);
-            }
         }
     }
 }
