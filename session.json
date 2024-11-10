@@ -369,7 +369,7 @@
       {
         "type": "script",
         "lock": false,
-        "id": "dorico",
+        "id": "doricoCallback",
         "comments": "",
         "value": "",
         "default": "",
@@ -382,7 +382,7 @@
         "ignoreDefaults": false,
         "bypass": false,
         "onCreate": "",
-        "onValue": "const callback = JSON.parse(value)\n\n// if (callback.message === 'commandlist') {\n//   callback.commands\n//     .forEach(command => console.log(`${command.displayName}: ${command.name}`))\n// }\n// else {\n  console.log(callback.message)\n// }",
+        "onValue": "const callback = JSON.parse(value)\n\n// if (callback.message === 'commandlist') {\n//   callback.commands\n//     .forEach(command => console.log(`${command.displayName}: ${command.name}`))\n// }\n// else {\n  console.log(callback)\n// }",
         "onKeyboard": "",
         "keyBinding": "",
         "keyRepeat": true,
