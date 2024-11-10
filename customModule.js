@@ -10,7 +10,7 @@ module.exports = {
         // global.SibeliusConnect.connect()
 
         global.DoricoRemote = new DoricoRemote()
-        global.DoricoRemote.connect()
+        // global.DoricoRemote.connect()
     },
 
     oscOutFilter: function(data) {
