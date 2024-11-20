@@ -4,7 +4,7 @@ class SibeliusConnect extends WebSocketClient {
     constructor(appName = 'Sibelius Connect Remote', port = 1898, plugins = []) {
         super(`ws://localhost:${port}`);
         this.appName = appName;
-        this.plugins = plugins;
+        this.plugins = Array.isArray(plugins) ? plugins : [plugins];
         this.sessionToken = null;
         this.handshakeDone = false;
     }
@@ -23,6 +23,7 @@ class SibeliusConnect extends WebSocketClient {
         if (this.sessionToken) {
             message.sessionToken = this.sessionToken;
         } else if (this.plugins.length > 0) {
+            // We can't send a new list of plugins unless we're starting a new session
             message.plugins = this.plugins;
         }
 
