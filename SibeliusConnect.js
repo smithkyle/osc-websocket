@@ -1,10 +1,9 @@
 const WebSocketClient = require('./WebSocketClient.js')
 
 class SibeliusConnect extends WebSocketClient {
-    constructor({ appName = 'Sibelius Connect Remote', port = 1898, handshakeVersion = '1.0', plugins = [] } = {}) {
+    constructor({ appName = 'Sibelius Connect Remote', port = 1898, plugins = [] } = {}) {
         super(`ws://localhost:${port}`);
         this.appName = appName;
-        this.handshakeVersion = handshakeVersion;
         this.plugins = Array.isArray(plugins) ? plugins : [plugins];
         this.sessionToken = null;
         this.handshakeDone = false;
@@ -16,7 +15,7 @@ class SibeliusConnect extends WebSocketClient {
 
     sendHandshake() {
         const message = {
-            handshakeVersion: this.handshakeVersion,
+            handshakeVersion: '1.0',
             clientName: this.appName,
             message: 'connect',
         };

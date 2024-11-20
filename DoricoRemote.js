@@ -1,10 +1,9 @@
 const WebSocketClient = require('./WebSocketClient.js')
 
 class DoricoRemote extends WebSocketClient {
-    constructor({ appName = 'Dorico Remote', handshakeVersion = '1.0', callbackAddress = '/doricoCallback' } = {}) {
+    constructor({ appName = 'Dorico Remote', callbackAddress = '/doricoCallback' } = {}) {
         super('ws://127.0.0.1:4560');
         this.appName = appName;
-        this.handshakeVersion = handshakeVersion;
         this.callbackAddress = callbackAddress;
         this.sessionToken = null;
         this.handshakeDone = false;
@@ -18,7 +17,7 @@ class DoricoRemote extends WebSocketClient {
         const message = {
             message: 'connect',
             clientName: this.appName,
-            handshakeVersion: this.handshakeVersion,
+            handshakeVersion: '1.0',
         };
         
         if (this.sessionToken) {
