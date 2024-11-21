@@ -1,6 +1,6 @@
 # OSC-Websocket
 
-This repository contains custom module that implements a basic websocket client for use with [Open Stage Control](https://openstagecontrol.ammd.net/). It contains two sample implementations of the websocket client:
+This repository contains a custom module that implements a basic websocket client for use with [Open Stage Control](https://openstagecontrol.ammd.net/). It contains two sample implementations of the websocket client:
 
 1. [SibeliusConnect](https://www.avid.com/resource-center/whats-new-in-sibelius-march-2024)
 2. Dorico Remote API
