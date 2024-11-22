@@ -17,8 +17,12 @@ module.exports = {
     oscOutFilter: function(data) {
         
         const { address, args, host, port, clientId } = data;
-        console.log(path.dirname(address))
+        
         try {
+            // @TODO REMOVE
+            if (args[0].value === 0) {
+                return data
+            }
             if (address === '/SibeliusConnect') {
                 args.forEach(arg => {
                     const msg = JSON.parse(arg.value)
@@ -27,10 +31,13 @@ module.exports = {
             }
             if (address === '/SibeliusConnect/command') {
                 // @TODO: accept comma-separated list, i.e. /SibeliusConnect/command/select_all,delete
-                global.SibeliusConnect.sendMessage({
-                    'message': 'invokeCommands',
-                    'commands': [...args.map(arg => arg.value)]
-                });
+                const commands = args.reduce((acc, cur) => [...acc, ...cur.value.split(',')], [])
+                // global.SibeliusConnect.sendMessage({
+                //     'message': 'invokeCommands',
+                //     'commands': [...args.map(arg => arg.value)]
+                // });
+                console.log(`commands: ${commands}`)
+                console.log(commands)
             }
             if (address === '/SibeliusConnect/plugin') {
                 args.forEach(arg => {
