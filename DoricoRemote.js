@@ -1,7 +1,7 @@
 const WebSocketClient = require('./WebSocketClient.js')
 
 class DoricoRemote extends WebSocketClient {
-    constructor({ appName = 'Dorico Remote', callbackAddress = '/doricoCallback' } = {}) {
+    constructor({ appName = 'Dorico Remote', callbackAddress = '/DoricoCallback' } = {}) {
         super('ws://127.0.0.1:4560');
         this.appName = appName;
         this.callbackAddress = callbackAddress;
@@ -45,7 +45,9 @@ class DoricoRemote extends WebSocketClient {
             this.sendQueuedMessages();  // Now safe to send queued messages
         }
         
-        receive(this.callbackAddress, data)
+        if (this.callbackAddress && this.callbackAddress.length > 0) {
+            receive(this.callbackAddress, data)
+        }
     }
 
     onClose(event) {
