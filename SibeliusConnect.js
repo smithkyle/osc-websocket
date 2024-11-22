@@ -1,9 +1,10 @@
 const WebSocketClient = require('./WebSocketClient.js')
 
 class SibeliusConnect extends WebSocketClient {
-    constructor({ appName = 'Sibelius Connect Remote', port = 1898, plugins = [] } = {}) {
+    constructor({ appName = 'Sibelius Connect Remote', callbackAddress = '/SibeliusCallback', port = 1898, plugins = [] } = {}) {
         super(`ws://localhost:${port}`);
         this.appName = appName;
+        this.callbackAddress = callbackAddress;
         this.plugins = Array.isArray(plugins) ? plugins : [plugins];
         this.sessionToken = null;
         this.handshakeDone = false;
@@ -36,6 +37,10 @@ class SibeliusConnect extends WebSocketClient {
             console.log('Received sessionToken:', this.sessionToken);
             this.handshakeDone = true;  // Handshake is now complete
             this.sendQueuedMessages();  // Now safe to send queued messages
+        }
+        
+        if (this.callbackAddress && this.callbackAddress.length > 0) {
+            receive(this.callbackAddress, data)
         }
     }
 
