@@ -1,4 +1,5 @@
-const fs = nativeRequire('fs')
+// const fs = nativeRequire('fs')
+const path = nativeRequire('path')
 
 const SibeliusConnect = require('SibeliusConnect.js')
 const DoricoRemote = require('DoricoRemote.js')
@@ -6,7 +7,7 @@ const DoricoRemote = require('DoricoRemote.js')
 module.exports = {
 
     init: function() {
-        global.SibeliusConnect = new SibeliusConnect()
+        global.SibeliusConnect = new SibeliusConnect({plugins: ['PositionRehearsalMarks']})
         // global.SibeliusConnect.connect()
 
         global.DoricoRemote = new DoricoRemote()
@@ -16,17 +17,45 @@ module.exports = {
     oscOutFilter: function(data) {
         
         const { address, args, host, port, clientId } = data;
-        
-        if (address === '/sibeliusConnect') {
-            global.SibeliusConnect.sendMessage({
-                'message': 'invokeCommands',
-                'commands': [...args.map(arg => arg.value)]
-            });
+        console.log(path.dirname(address))
+        try {
+            if (address === '/SibeliusConnect') {
+                args.forEach(arg => {
+                    const msg = JSON.parse(arg.value)
+                    global.SibeliusConnect.sendMessage(msg)
+                })
+            }
+            if (address === '/SibeliusConnect/command') {
+                // @TODO: accept comma-separated list, i.e. /SibeliusConnect/command/select_all,delete
+                global.SibeliusConnect.sendMessage({
+                    'message': 'invokeCommands',
+                    'commands': [...args.map(arg => arg.value)]
+                });
+            }
+            if (address === '/SibeliusConnect/plugin') {
+                args.forEach(arg => {
+                    const plugin = arg.value[0] === '{' ? JSON.parse(arg.value) : { name: arg.value }
+                    const msg = {
+                        'message' : 'invokePlugin',
+                        'name': plugin.name
+                    }
+                    if (plugin.method) {
+                        msg.method = plugin.method
+                    }
+                    if (plugin.args) {
+                        msg.args = plugin.args
+                    }
+                    global.SibeliusConnect.sendMessage(msg);
+                })
+            }
+            else if (address === '/DoricoRemote') {
+                args.forEach(arg => {
+                    global.DoricoRemote.sendMessage(JSON.parse(arg.value))
+                })
+            }
         }
-        else if (address === '/doricoRemote') {
-            args.forEach(arg => {
-                global.DoricoRemote.sendMessage(JSON.parse(arg.value))
-            })
+        catch (e) {
+            console.log(e)
         }
         
         return { address, args, host, port };
