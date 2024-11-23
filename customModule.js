@@ -19,6 +19,11 @@ module.exports = {
         const { address, args, host, port, clientId } = data;
         
         try {
+            if (args.length === 1 && args[0].value === 0) {
+                // passthru "off"/0 messages
+                return data
+            }
+            
             if (address === '/SibeliusConnect') {
                 args.forEach(arg => {
                     const msg = JSON.parse(arg.value)
