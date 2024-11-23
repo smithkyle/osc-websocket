@@ -7,7 +7,7 @@ const DoricoRemote = require('DoricoRemote.js')
 module.exports = {
 
     init: function() {
-        global.SibeliusConnect = new SibeliusConnect({plugins: ['PositionRehearsalMarks']})
+        global.SibeliusConnect = new SibeliusConnect()
         // global.SibeliusConnect.connect()
 
         global.DoricoRemote = new DoricoRemote()
