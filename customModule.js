@@ -62,7 +62,7 @@ module.exports = {
             }
         }
         catch (e) {
-            console.log(e)
+            receive('/NOTIFY', '^circle-exclamation', `${address} ${args.map(a => a.value).join(' ')}\n\n ${e.toString()}`)
         }
         
         return { address, args, host, port };
