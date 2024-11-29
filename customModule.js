@@ -32,7 +32,9 @@ module.exports = {
             }
             else if (path.dirname(address) === '/SibeliusConnect') {
                 if (path.basename(address) === 'command') {
-                    const commands = args.reduce((acc, cur) => [...acc, ...cur.value.split(',')], [])
+                    const commands = args
+                        .reduce((acc, cur) => [...acc, ...cur.value.split(',')], [])
+                        .map(value => value.trim())
                     global.SibeliusConnect.sendMessage({
                         'message': 'invokeCommands',
                         'commands': commands
