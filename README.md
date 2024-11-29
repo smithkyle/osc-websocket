@@ -18,5 +18,30 @@ Once the session is running, pressing any of the buttons will initiate the hands
 
 Enjoy!
 
-### Additional Notes
-The ```ws``` NPM package is bundled with this custom module to negate the need for having NPM installed.
+## Adding Custom Buttons
+
+1. Enable the `Editor` by selecting the 3 dots menu > Editor > Enabled (checked) OR by pressing Cmd/Ctrl + E
+2. Add a button by right clicking on the canvas > Add Widget > Basics > add button
+3. Set the following properties for the button:
+   - `button`
+      - `on`: enter one of:
+         - (Sibelius) a comma-separated list of Command IDs
+         - (Sibelius) a plugin name (executing the plugin's default Run() method) **
+         - (Sibelius) a plugin JSON object to execute arbitrary plugin methods **
+         - (Dorico) a Dorico JSON message or an array of Dorico JSON messages
+   - `osc`
+      - `address`: enter one of:
+         - `/SibeliusConnect/command` to send Command IDs
+         - `/SibeliusConnect/plugin` to invoke a plugin **
+         - `/SibeliusConnect` to send a raw Sibelius Connect message (per the [Sibelius Manuscript Reference Documentation](https://resources.avid.com/SupportFiles/Sibelius/2024.10/ManuScript_Language_Guide.pdf])) ***
+         - `/DoricoRemote` to send a request to Dorico
+      - `send`: `localhost:8080`
+
+   _** NOTE: if executing Sibelius plugins, the plugin name **MUST** be added to the SibeliusConnect websocket instance BEFORE starting OpenStageControl, i.e.:_
+
+   ```javascript
+      global.SibeliusConnect = new SibeliusConnect({ plugins: ['PositionRehearsalMarks'] })
+   ```
+
+## Additional Notes
+The `ws` NPM package is bundled with this custom module to negate the need for having NPM installed.

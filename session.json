@@ -192,7 +192,7 @@
             "traversing": false,
             "widgetType": "button",
             "quantity": 5,
-            "props": "JS{{\n\n  const voice = $ + 1\n  const props = {\n    mode: 'tap',\n    label: voice === 5 ? 'All\\nVoices' : `Voice ${voice}`,\n    on: `voice${voice === 5 ? '_all' : voice }`,\n  };\n  console.log(props.on)\n  \n  return props;\n}}",
+            "props": "JS{{\n\n  const voice = $ + 1\n  const props = {\n    mode: 'tap',\n    label: voice === 5 ? 'All\\nVoices' : `Voice ${voice}`,\n    on: `voice${voice === 5 ? '_all' : voice }`,\n  };\n  \n  return props;\n}}",
             "value": "",
             "default": "",
             "linkId": "",
