@@ -37,7 +37,7 @@ Enjoy!
          - `/DoricoRemote` to send a request to Dorico
       - `send`: `localhost:8080`
 
-   _** NOTE: if executing Sibelius plugins, the plugin name **MUST** be added to the SibeliusConnect websocket instance BEFORE starting OpenStageControl, i.e.:_
+   _** NOTE: if executing Sibelius plugins, the plugin name **MUST** be added to the SibeliusConnect websocket instance in `customModule.js` BEFORE starting OpenStageControl, i.e.:_
 
    ```javascript
       global.SibeliusConnect = new SibeliusConnect({ plugins: ['PositionRehearsalMarks'] })
