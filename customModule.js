@@ -7,7 +7,7 @@ const DoricoRemote = require('DoricoRemote.js')
 module.exports = {
 
     init: function() {
-        global.SibeliusConnect = new SibeliusConnect()
+        global.SibeliusConnect = new SibeliusConnect({plugins: ['cmdutils']})
         // global.SibeliusConnect.connect()
 
         global.DoricoRemote = new DoricoRemote()
@@ -23,45 +23,49 @@ module.exports = {
                 // passthru "off"/0 messages
                 return data
             }
-            
-            if (address === '/SibeliusConnect') {
-                args.forEach(arg => {
-                    const msg = JSON.parse(arg.value)
+
+            args.map(arg => arg.value)
+                .map(arg => {
+                    let addr = address
+                    if (addr === '/SibeliusConnect' || path.dirname(addr) === '/SibeliusConnect') {
+                        let msg = arg[0] === '{' ? JSON.parse(arg) : {}
+                        if (arg[0] === '/') {
+                            // we're macroing - change the address here?
+                            addr = arg.substring(0, arg.indexOf(' '))
+                            arg = arg.substring(arg.indexOf(' ') + 1)
+                        }
+                        if (path.basename(addr) === 'command') {
+                            msg.message = 'invokeCommands'
+                            msg.commands = arg.split(',').map(v => v.trim())
+                        }
+                        else if (path.basename(addr) === 'plugin') {
+                            msg.message = 'invokePlugin'
+                            if (!msg.name || msg.name === '') {
+                                [pluginName, method, ...methodArgs] = arg.split(',')
+                                msg.name = pluginName
+                                if (method) {
+                                    msg.method = method
+                                }
+                                if (args) {
+                                    msg.args = methodArgs
+                                }
+                            }
+                        }
+                        
+                        return msg
+                    }
+                    // @TODO HANDLE THIS
+                    else if (address === '/DoricoRemote') {
+                        args.forEach(arg => {
+                            global.DoricoRemote.sendMessage(JSON.parse(arg.value))
+                        })
+                    }
+                })
+                .reduce(async (a, msg) => {
+                    await a
                     global.SibeliusConnect.sendMessage(msg)
-                })
-            }
-            else if (path.dirname(address) === '/SibeliusConnect') {
-                if (path.basename(address) === 'command') {
-                    const commands = args
-                        .reduce((acc, cur) => [...acc, ...cur.value.split(',')], [])
-                        .map(value => value.trim())
-                    global.SibeliusConnect.sendMessage({
-                        'message': 'invokeCommands',
-                        'commands': commands
-                    });
-                }
-                else if (path.basename(address) === 'plugin') {
-                    args.forEach(arg => {
-                        const plugin = arg.value[0] === '{' ? JSON.parse(arg.value) : { name: arg.value }
-                        const msg = {
-                            'message' : 'invokePlugin',
-                            'name': plugin.name
-                        }
-                        if (plugin.method) {
-                            msg.method = plugin.method
-                        }
-                        if (plugin.args) {
-                            msg.args = plugin.args
-                        }
-                        global.SibeliusConnect.sendMessage(msg);
-                    })
-                }
-            }
-            else if (address === '/DoricoRemote') {
-                args.forEach(arg => {
-                    global.DoricoRemote.sendMessage(JSON.parse(arg.value))
-                })
-            }
+                    return new Promise(resolve => setTimeout(resolve, 5));
+                }, Promise.resolve())
         }
         catch (e) {
             receive('/NOTIFY', '^circle-exclamation', `${address} ${args.map(a => a.value).join(' ')}\n\n ${e.toString()}`)
