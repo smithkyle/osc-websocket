@@ -7,7 +7,7 @@ const DoricoRemote = require('DoricoRemote.js')
 module.exports = {
 
     init: function() {
-        global.SibeliusConnect = new SibeliusConnect({plugins: ['cmdutils']})
+        global.SibeliusConnect = new SibeliusConnect({ plugins: ['cmdutils'] })
         // global.SibeliusConnect.connect()
 
         global.DoricoRemote = new DoricoRemote()
@@ -24,16 +24,21 @@ module.exports = {
                 return data
             }
 
-            args.map(arg => arg.value)
-                .map(arg => {
-                    let addr = address
+            if (address === '/SibeliusConnect' || path.dirname(address) === '/SibeliusConnect') {
+                let addr = address // don't mess with address - is this actually needed?
+                args.map(arg => {
+                    arg = arg.value
+
                     if (addr === '/SibeliusConnect' || path.dirname(addr) === '/SibeliusConnect') {
-                        let msg = arg[0] === '{' ? JSON.parse(arg) : {}
+                        
                         if (arg[0] === '/') {
                             // we're macroing - change the address here?
                             addr = arg.substring(0, arg.indexOf(' '))
                             arg = arg.substring(arg.indexOf(' ') + 1)
                         }
+
+                        let msg = arg[0] === '{' ? JSON.parse(arg) : {}
+
                         if (path.basename(addr) === 'command') {
                             msg.message = 'invokeCommands'
                             msg.commands = arg.split(',').map(v => v.trim())
@@ -54,18 +59,18 @@ module.exports = {
                         
                         return msg
                     }
-                    // @TODO HANDLE THIS
-                    else if (address === '/DoricoRemote') {
-                        args.forEach(arg => {
-                            global.DoricoRemote.sendMessage(JSON.parse(arg.value))
-                        })
-                    }
                 })
                 .reduce(async (a, msg) => {
                     await a
                     global.SibeliusConnect.sendMessage(msg)
-                    return new Promise(resolve => setTimeout(resolve, 5));
+                    return new Promise(resolve => setTimeout(resolve, 10));
                 }, Promise.resolve())
+            }
+            else if (address === '/DoricoRemote') {
+                args.forEach(arg => {
+                    global.DoricoRemote.sendMessage(JSON.parse(arg.value))
+                })
+            }
         }
         catch (e) {
             receive('/NOTIFY', '^circle-exclamation', `${address} ${args.map(a => a.value).join(' ')}\n\n ${e.toString()}`)
