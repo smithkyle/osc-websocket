@@ -3,6 +3,7 @@ const path = nativeRequire('path')
 
 const SibeliusConnect = require('SibeliusConnect.js')
 const DoricoRemote = require('DoricoRemote.js')
+const OBSWebsocket = require('OBSWebsocket.js')
 
 module.exports = {
 
@@ -12,6 +13,9 @@ module.exports = {
 
         global.DoricoRemote = new DoricoRemote()
         // global.DoricoRemote.connect()
+
+        global.OBSWebsocket = new OBSWebsocket({ auth: 'oR53uAk2fGJi3zwk' })
+        global.OBSWebsocket.connect()
     },
 
     oscOutFilter: function(data) {
@@ -60,6 +64,11 @@ module.exports = {
             else if (address === '/DoricoRemote') {
                 args.forEach(arg => {
                     global.DoricoRemote.sendMessage(JSON.parse(arg.value))
+                })
+            }
+            else if (address === '/OBSWebsocket') {
+                args.forEach(arg => {
+                    global.OBSWebsocket.sendMessage(JSON.parse(arg.value))
                 })
             }
         }
