@@ -52,9 +52,10 @@ module.exports = {
                                     msg.method = method
                                 }
                                 if (args) {
-                                    msg.args = methodArgs
+                                    msg.args = JSON.parse(`[${methodArgs.join(',')}]`)
                                 }
                             }
+                            console.log(msg)
                         }
                         
                         return msg
