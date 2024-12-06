@@ -25,19 +25,19 @@ module.exports = {
             }
 
             if (address === '/SibeliusConnect' || path.dirname(address) === '/SibeliusConnect') {
-                let addr = address // don't mess with address - is this actually needed?
                 args.map(arg => {
+                    let addr = address // don't mess with address - is this actually needed?
                     arg = arg.value
 
                     if (addr === '/SibeliusConnect' || path.dirname(addr) === '/SibeliusConnect') {
                         
-                        if (arg[0] === '/') {
+                        if (arg.startsWith('command:') || arg.startsWith('plugin:')) {
                             // we're macroing - change the address here?
-                            addr = arg.substring(0, arg.indexOf(' '))
-                            arg = arg.substring(arg.indexOf(' ') + 1)
+                            addr = `/SibeliusConnect/${arg.substring(0, arg.indexOf(':'))}`
+                            arg = arg.substring(arg.indexOf(':') + 1)
                         }
 
-                        let msg = arg[0] === '{' ? JSON.parse(arg) : {}
+                        let msg = arg.startsWith('{') ? JSON.parse(arg) : {}
 
                         if (path.basename(addr) === 'command') {
                             msg.message = 'invokeCommands'
@@ -51,13 +51,12 @@ module.exports = {
                                 if (method) {
                                     msg.method = method
                                 }
-                                if (args) {
+                                if (methodArgs && methodArgs.length > 0) {
                                     msg.args = JSON.parse(`[${methodArgs.join(',')}]`)
                                 }
                             }
-                            console.log(msg)
                         }
-                        
+
                         return msg
                     }
                 })
