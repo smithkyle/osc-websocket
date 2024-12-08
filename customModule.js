@@ -26,28 +26,30 @@ module.exports = {
 
             if (address === '/SibeliusConnect' || path.dirname(address) === '/SibeliusConnect') {
                 args.map(arg => {
+                    let addr = address
                     arg = arg.value
 
                     if (arg.startsWith('command:') || arg.startsWith('plugin:')) {
+                        addr = arg.substring(0,arg.indexOf(':'))
                         arg = arg.substring(arg.indexOf(':') + 1)
                     }
 
                     let msg = arg.startsWith('{') ? JSON.parse(arg) : {}
 
-                    if (path.basename(address) === 'command' || arg.startsWith('command:')) {
+                    if (path.basename(addr) === 'command') {
                         msg.message = 'invokeCommands'
                         msg.commands = arg.split(',').map(v => v.trim())
                     }
-                    else if (path.basename(address) === 'plugin' || arg.startsWith('plugin:')) {
+                    else if (path.basename(addr) === 'plugin') {
                         msg.message = 'invokePlugin'
                         if (!msg.name || msg.name === '') {
-                            [pluginName, method, ...methodArgs] = arg.split(',')
+                            const [pluginName, method, ...methodArgs] = arg.split(',')
                             msg.name = pluginName
                             if (method) {
                                 msg.method = method
                             }
                             if (methodArgs && methodArgs.length > 0) {
-                                msg.args = JSON.parse(`[${methodArgs.join(',')}]`)
+                                msg.args = JSON.parse(`[${methodArgs.join(',').replace(/\\/g, "\\\\")}]`)
                             }
                         }
                     }
@@ -57,7 +59,7 @@ module.exports = {
                 .reduce(async (a, msg) => {
                     await a
                     global.SibeliusConnect.sendMessage(msg)
-                    return new Promise(resolve => setTimeout(resolve, 10));
+                    return new Promise(resolve => setTimeout(resolve, 50));
                 }, Promise.resolve())
             }
             else if (address === '/DoricoRemote') {
