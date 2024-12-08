@@ -26,39 +26,33 @@ module.exports = {
 
             if (address === '/SibeliusConnect' || path.dirname(address) === '/SibeliusConnect') {
                 args.map(arg => {
-                    let addr = address // don't mess with address - is this actually needed?
                     arg = arg.value
 
-                    if (addr === '/SibeliusConnect' || path.dirname(addr) === '/SibeliusConnect') {
-                        // @todo: can we condense this into the if/else below?
-                        if (arg.startsWith('command:') || arg.startsWith('plugin:')) {
-                            // we're macroing - change the address here?
-                            addr = `/SibeliusConnect/${arg.substring(0, arg.indexOf(':'))}`
-                            arg = arg.substring(arg.indexOf(':') + 1)
-                        }
+                    if (arg.startsWith('command:') || arg.startsWith('plugin:')) {
+                        arg = arg.substring(arg.indexOf(':') + 1)
+                    }
 
-                        let msg = arg.startsWith('{') ? JSON.parse(arg) : {}
+                    let msg = arg.startsWith('{') ? JSON.parse(arg) : {}
 
-                        if (path.basename(addr) === 'command') {
-                            msg.message = 'invokeCommands'
-                            msg.commands = arg.split(',').map(v => v.trim())
-                        }
-                        else if (path.basename(addr) === 'plugin') {
-                            msg.message = 'invokePlugin'
-                            if (!msg.name || msg.name === '') {
-                                [pluginName, method, ...methodArgs] = arg.split(',')
-                                msg.name = pluginName
-                                if (method) {
-                                    msg.method = method
-                                }
-                                if (methodArgs && methodArgs.length > 0) {
-                                    msg.args = JSON.parse(`[${methodArgs.join(',')}]`)
-                                }
+                    if (path.basename(address) === 'command' || arg.startsWith('command:')) {
+                        msg.message = 'invokeCommands'
+                        msg.commands = arg.split(',').map(v => v.trim())
+                    }
+                    else if (path.basename(address) === 'plugin' || arg.startsWith('plugin:')) {
+                        msg.message = 'invokePlugin'
+                        if (!msg.name || msg.name === '') {
+                            [pluginName, method, ...methodArgs] = arg.split(',')
+                            msg.name = pluginName
+                            if (method) {
+                                msg.method = method
+                            }
+                            if (methodArgs && methodArgs.length > 0) {
+                                msg.args = JSON.parse(`[${methodArgs.join(',')}]`)
                             }
                         }
-
-                        return msg
                     }
+
+                    return msg
                 })
                 .reduce(async (a, msg) => {
                     await a
