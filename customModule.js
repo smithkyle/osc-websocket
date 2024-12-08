@@ -30,7 +30,7 @@ module.exports = {
                     arg = arg.value
 
                     if (addr === '/SibeliusConnect' || path.dirname(addr) === '/SibeliusConnect') {
-                        
+                        // @todo: can we condense this into the if/else below?
                         if (arg.startsWith('command:') || arg.startsWith('plugin:')) {
                             // we're macroing - change the address here?
                             addr = `/SibeliusConnect/${arg.substring(0, arg.indexOf(':'))}`
