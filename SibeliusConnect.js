@@ -50,11 +50,11 @@ class SibeliusConnect extends WebSocketClient {
             this._processHandshake(data);
         }
         
-        if (this.callbackAddress && this.callbackAddress.length > 0) {
-            receive(this.callbackAddress, data)
-        }
+        super.onMessage(data);
 
-        super.onMessage(data)
+        if (this.callbackAddress && this.callbackAddress.length > 0) {
+            receive(this.callbackAddress, data);
+        }
     }
 
     onClose(event) {

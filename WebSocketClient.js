@@ -133,7 +133,8 @@ class WebSocketClient extends EventEmitter {
                     resolve(response)
                 }
                 else {
-                   resolve();
+                    await new Promise((res) => this.once("message", res));
+                    resolve()
                 }
             }
             catch (error) {
@@ -154,7 +155,7 @@ class WebSocketClient extends EventEmitter {
 
     close() {
         this.shouldReconnect = false;
-        if (this.socket) {
+        if (this.socket?.readyState === WebSocket.OPEN) {
             this.removeAllListeners();
             this.socket.close();
             console.log("WebSocket closed")
