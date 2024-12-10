@@ -964,7 +964,7 @@
                 "name": "cmdutils",
                 "method": "Add_Text_cu",
                 "args": [
-                  "@{qEquals}100"
+                  "@{q_equals}100"
                 ]
               }
             ],
@@ -1015,7 +1015,7 @@
             "wrap": false,
             "on": [
               "plugin:cmdutils,TextStyleDefaultForCommands_cu,\"text.system.metronome\"",
-              "plugin:cmdutils,Add_Text_cu,\"@{qEquals}100\""
+              "plugin:cmdutils,Add_Text_cu,\"@{q_equals}100\""
             ],
             "off": 0,
             "mode": "tap",
@@ -1063,8 +1063,8 @@
             "vertical": false,
             "wrap": false,
             "on": [
-              "@{addMM}",
-              "plugin:cmdutils,AddSelect_Text_cu,\"@{qEquals} @{knob_1}\""
+              "@{add_mm}",
+              "plugin:cmdutils,AddSelect_Text_cu,\"@{q_equals} @{knob_1}\""
             ],
             "off": 0,
             "mode": "tap",
@@ -1183,7 +1183,7 @@
           {
             "type": "variable",
             "lock": false,
-            "id": "addMM",
+            "id": "add_mm",
             "comments": "",
             "value": "plugin:cmdutils,TextStyleDefaultForCommands_cu,\"text.system.metronome\"",
             "default": "",
@@ -1201,7 +1201,7 @@
           {
             "type": "variable",
             "lock": false,
-            "id": "qEquals",
+            "id": "q_equals",
             "comments": "",
             "value": "\\ctext.character.musictext\\q\\f_\\ = ",
             "default": "",
@@ -1244,7 +1244,7 @@
             "label": "Add MM\n(Ready2Type)",
             "vertical": false,
             "wrap": false,
-            "on": "@{addMM};plugin:cmdutils,AddSelect_Text_cu,\"@{qEquals}\";command:edit_text",
+            "on": "@{add_mm};plugin:cmdutils,AddSelect_Text_cu,\"@{q_equals}\";command:edit_text",
             "off": 0,
             "mode": "tap",
             "doubleTap": false,
