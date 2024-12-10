@@ -10,11 +10,13 @@ class SibeliusConnect extends WebSocketClient {
         this.handshakeDone = false;
     }
 
-    onOpen() {
-        this.sendHandshake();
+    onOpen(resolve) {
+        this._sendHandshake();
+
+        super.onOpen(resolve);
     }
 
-    sendHandshake() {
+    _sendHandshake() {
         const message = {
             handshakeVersion: '1.0',
             clientName: this.appName,
@@ -28,20 +30,31 @@ class SibeliusConnect extends WebSocketClient {
             message.plugins = this.plugins;
         }
 
-        this.sendMessage(message);
+        this.send(message);
     }
 
-    onMessage(data) {
+    _processHandshake(data) {
         if (data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log('Received sessionToken:', this.sessionToken);
-            this.handshakeDone = true;  // Handshake is now complete
-            this.sendQueuedMessages();  // Now safe to send queued messages
+            this.handshakeDone = true;
+            this._processQueue();
+        }
+        else {
+            console.error("Handshake failed");
+        }
+    }
+
+    onMessage(data) {
+        if (!this.handshakeDone && data.sessionToken) {
+            this._processHandshake(data);
         }
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data)
         }
+
+        super.onMessage(data)
     }
 
     onClose(event) {
@@ -49,15 +62,16 @@ class SibeliusConnect extends WebSocketClient {
             console.log('Connection closed cleanly - send a command to open a new connection');
             this.sessionToken = null;
             this.handshakeDone = false;
-        } else {
-            console.log('Connection lost, retrying...');
         }
+
+        super.onClose(event)
     }
 
-    close() {
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.socket.close(1000, 'Unload');
+    send(message) {
+        if (!this.socket) {
+            this.connect()
         }
+        super.send(message);
     }
 }
 

@@ -27,7 +27,7 @@ module.exports = {
             if (address === '/SibeliusConnect') {
                 args.forEach(arg => {
                     const msg = JSON.parse(arg.value)
-                    global.SibeliusConnect.sendMessage(msg)
+                    global.SibeliusConnect.send(msg)
                 })
             }
             else if (path.dirname(address) === '/SibeliusConnect') {
@@ -35,7 +35,7 @@ module.exports = {
                     const commands = args
                         .reduce((acc, cur) => [...acc, ...cur.value.split(',')], [])
                         .map(value => value.trim())
-                    global.SibeliusConnect.sendMessage({
+                    global.SibeliusConnect.send({
                         'message': 'invokeCommands',
                         'commands': commands
                     });
@@ -53,13 +53,13 @@ module.exports = {
                         if (plugin.args) {
                             msg.args = plugin.args
                         }
-                        global.SibeliusConnect.sendMessage(msg);
+                        global.SibeliusConnect.send(msg);
                     })
                 }
             }
             else if (address === '/DoricoRemote') {
                 args.forEach(arg => {
-                    global.DoricoRemote.sendMessage(JSON.parse(arg.value))
+                    global.DoricoRemote.send(JSON.parse(arg.value))
                 })
             }
         }
