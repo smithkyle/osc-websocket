@@ -12,7 +12,7 @@ class SibeliusConnect extends WebSocketClient {
 
     onOpen(resolve) {
         this._sendHandshake();
-
+        
         super.onOpen(resolve);
     }
 
@@ -29,7 +29,7 @@ class SibeliusConnect extends WebSocketClient {
             // We can't send a new list of plugins unless we're starting a new session
             message.plugins = this.plugins;
         }
-
+        
         this.send(message);
     }
 
@@ -43,33 +43,37 @@ class SibeliusConnect extends WebSocketClient {
         else {
             console.error("Handshake failed");
         }
+        console.log('processed')
     }
 
-    onMessage(data) {
+    onMessage(event) {
+        const data = JSON.parse(event.data);
+
         if (!this.handshakeDone && data.sessionToken) {
             this._processHandshake(data);
         }
-        
-        super.onMessage(data);
 
+        super.onMessage(event);
+        
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data);
         }
     }
 
-    onClose(event) {
+    async onClose(event) {
         if (event.code === 1000) {
             console.log('Connection closed cleanly - send a command to open a new connection');
             this.sessionToken = null;
             this.handshakeDone = false;
+            this.shouldReconnect = false;
         }
 
         super.onClose(event)
     }
 
-    send(message) {
+    async send(message) {
         if (!this.socket) {
-            this.connect()
+            await this.connect()
         }
         super.send(message);
     }

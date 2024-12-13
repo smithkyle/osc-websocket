@@ -31,10 +31,10 @@ Enjoy!
          - (Dorico) a Dorico JSON message or an array of Dorico JSON messages
    - `osc`
       - `address`: enter one of:
-         - `/SibeliusConnect/command` to send Command IDs
-         - `/SibeliusConnect/plugin` to invoke a plugin **
-         - `/SibeliusConnect` to send a raw Sibelius Connect message (per the [Sibelius Manuscript Reference Documentation](https://resources.avid.com/SupportFiles/Sibelius/2024.10/ManuScript_Language_Guide.pdf])) ***
-         - `/DoricoRemote` to send a request to Dorico
+         - `/SibeliusConnect/command` if sending Command IDs
+         - `/SibeliusConnect/plugin` if invoking a plugin **
+         - `/SibeliusConnect` if sending a raw Sibelius Connect JSON message (per the [Sibelius Manuscript Reference Documentation](https://resources.avid.com/SupportFiles/Sibelius/2024.10/ManuScript_Language_Guide.pdf])) ***
+         - `/DoricoRemote` if sending a request to Dorico
       - `send`: `localhost:8080`
 
    _** NOTE: if executing Sibelius plugins, the plugin name **MUST** be added to the SibeliusConnect websocket instance in `customModule.js` BEFORE starting OpenStageControl, i.e.:_
