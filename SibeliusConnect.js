@@ -45,12 +45,14 @@ class SibeliusConnect extends WebSocketClient {
         }
     }
 
-    onMessage(data) {
+    onMessage(event) {
+        const data = JSON.parse(event.data);
+
         if (!this.handshakeDone && data.sessionToken) {
             this._processHandshake(data);
         }
         
-        super.onMessage(data);
+        super.onMessage(event);
 
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data);
@@ -67,11 +69,17 @@ class SibeliusConnect extends WebSocketClient {
         super.onClose(event)
     }
 
-    send(message) {
+    async send(message) {
         if (!this.socket) {
-            this.connect()
+            await this.connect()
         }
-        super.send(message);
+
+        try {
+            super.send(message);
+        }
+        catch (e) {
+            console.error('caught error', e)
+        }
     }
 }
 

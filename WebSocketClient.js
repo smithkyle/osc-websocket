@@ -16,7 +16,6 @@ class WebSocketClient extends EventEmitter {
         
         this.messageQueue = [];
         this.processingQueue = false;
-        this.messageProcessingLock = false;
     }
 
     async connect() {
@@ -25,7 +24,15 @@ class WebSocketClient extends EventEmitter {
             this.socket = new WebSocket(this.url)
 
             this.socket.onopen = () => this.onOpen(resolve);
-            this.socket.onerror = (error) => this.onError(error, reject);
+            this.socket.onerror = (event) => {
+                switch (event.error.code) {
+                    case 'ECONNREFUSED':
+                        this.reconnect();
+                        break;
+                    default:
+                        this.onError(event, reject);
+                }
+            }
             this.socket.onmessage = (event) => this.onMessage(event);
             this.socket.onclose = (event) => this.onClose(event);
         });
@@ -36,6 +43,7 @@ class WebSocketClient extends EventEmitter {
 
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error("Max reconnect attempts reached");
+            this.cleanupSocket();
             this.emit("reconnect_failed");
             return;
         }
@@ -52,13 +60,35 @@ class WebSocketClient extends EventEmitter {
             this.reconnectAttempts = 0;
             this.emit("reconnect_success");
         }
-        catch(error) {
+        catch (error) {
             console.error("Reconnect failed:", error);
             this.reconnect();
         }
         finally {
             this.isReconnecting = false;
         }
+    }
+
+    cleanupSocket() {
+        console.log("Cleaning up WebSocket client");
+
+        // Close the existing socket, if any
+        if (this.socket) {
+            this.socket.removeAllListeners(); // Remove any lingering event listeners
+            if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
+                this.socket.close();
+            }
+            this.socket = null; // Dereference the socket
+        }
+        
+        // Reset state variables
+        this.isReconnecting = false;
+        this.reconnectAttempts = 0;
+        this.shouldReconnect = false;
+        this.processingQueue = false;
+    
+        // Emit a cleanup or failure event, if necessary
+        this.emit("cleanup");
     }
 
     onOpen(resolve) {
@@ -70,8 +100,9 @@ class WebSocketClient extends EventEmitter {
     }
 
     onError(error, reject) {
-        console.error("WebSocket connection error:", error);
+        console.error("WebSocket connection error:", error.error.code, error.message);
         this.emit("error", error);
+
         if (reject) reject(error);
 
         if (this.shouldReconnect) {
@@ -93,17 +124,23 @@ class WebSocketClient extends EventEmitter {
 
     onClose(event) {
         console.warn("WebSocket connection closed:", event.code, event.reason);
+
         this.emit("close", event);
 
         if (this.shouldReconnect || event.code !== 1000) {
-            this.reconnect();
+            if (!this.isReconnecting) {
+                this.reconnect();
+            }
+            this.isReconnecting = false;
+        }
+        else {
+            this.cleanupSocket();
         }
     }
 
     async _processQueue() {
-        if (this.processingQueue || !this.messageQueue.length || this.messageProcessingLock) return;
+        if (this.processingQueue || !this.messageQueue.length) return;
 
-        this.messageProcessingLock = true;
         this.processingQueue = true;
 
         while (this.messageQueue.length) {
@@ -133,7 +170,7 @@ class WebSocketClient extends EventEmitter {
                     resolve(response)
                 }
                 else {
-                    await new Promise((res) => this.once("message", res));
+                    await new Promise((response) => this.once("message", response));
                     resolve()
                 }
             }
@@ -142,7 +179,6 @@ class WebSocketClient extends EventEmitter {
             }
         }
         this.processingQueue = false;
-        this.messageProcessingLock = false;
     }
 
     send(message, id = null) {
