@@ -14,7 +14,8 @@ module.exports = {
         global.DoricoRemote = new DoricoRemote()
         // global.DoricoRemote.connect()
 
-        global.OBSWebsocket = new OBSWebsocket({ auth: 'oR53uAk2fGJi3zwk' })
+        const obsSettings = loadJSON('obs-identify.json', () => {}) || {};
+        global.OBSWebsocket = new OBSWebsocket(obsSettings)
         global.OBSWebsocket.connect()
     },
 
@@ -68,7 +69,7 @@ module.exports = {
             }
             else if (address === '/OBSWebsocket') {
                 args.forEach(arg => {
-                    global.OBSWebsocket.sendMessage(JSON.parse(arg.value))
+                    global.OBSWebsocket.send(JSON.parse(arg.value))
                 })
             }
         }

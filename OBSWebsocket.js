@@ -12,7 +12,7 @@ class OBSWebsocket extends WebSocketClient {
         this.handshakeDone = false;
     }
 
-    sendHandshake(data) {
+    _sendHandshake(data) {
         const message = {
             op: 1,
             d: {
@@ -36,18 +36,23 @@ class OBSWebsocket extends WebSocketClient {
         if (this.eventSubscriptions) { 
             message.eventSubscriptions = this.eventSubscriptions;
         }
-
-        this.sendMessage(message);
+        
+        this.send(message);
     }
 
-    onMessage(data) {
+    onMessage(event) {
+        const data = JSON.parse(event.data);
+
         if (data.op === 0) {
-            this.sendHandshake(data.d)
+            this._sendHandshake(data.d)
         }
         else if (data.op === 2) {
             this.handshakeDone = true;  // Handshake is now complete
-            this.sendQueuedMessages();  // Now safe to send queued messages
+            this._processQueue();  // Now safe to send queued messages
         }
+
+        const eventName = data.requestId ? `response:${data.requestId}` : "message"
+        this.emit(eventName, data)
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data)
@@ -58,8 +63,29 @@ class OBSWebsocket extends WebSocketClient {
         if (event.code === 1000) {
             console.log('Connection closed cleanly - send a command to open a new connection');
             this.handshakeDone = false;
+            this.cleanupSocket();
+            this.shouldReconnect = true;
         } else {
             console.log('Connection lost, retrying...');
+        }
+
+        super.onClose(event);
+    }
+
+    async send(message, id = null) {
+        if (!this.socket) {
+            await this.connect()
+        }
+
+        if (id) {
+            message.requestId = id
+        }
+
+        try {
+            super.send(message, id);
+        }
+        catch (e) {
+            console.error('caught error', e)
         }
     }
 
