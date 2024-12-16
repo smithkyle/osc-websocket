@@ -11,8 +11,11 @@ class SibeliusConnect extends WebSocketClient {
     }
 
     onOpen(resolve) {
+        // reset the message queue so we don't send a bunch of queued commands
+        // on reconnect, and because we need to send the handshake message first
+        this.messageQueue = [];
         this._sendHandshake();
-
+        
         super.onOpen(resolve);
     }
 
@@ -61,9 +64,11 @@ class SibeliusConnect extends WebSocketClient {
 
     onClose(event) {
         if (event.code === 1000) {
-            console.log('Connection closed cleanly - send a command to open a new connection');
+            console.log('Connection closing cleanly - will attempt a fresh connection');
             this.sessionToken = null;
             this.handshakeDone = false;
+            this.cleanupSocket();
+            this.shouldReconnect = true;
         }
 
         super.onClose(event)

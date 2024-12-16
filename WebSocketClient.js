@@ -20,13 +20,13 @@ class WebSocketClient extends EventEmitter {
 
     async connect() {
         return new Promise((resolve, reject) => {
-            this.shouldReconnect = true;
             this.socket = new WebSocket(this.url)
 
             this.socket.onopen = () => this.onOpen(resolve);
             this.socket.onerror = (event) => {
                 switch (event.error.code) {
                     case 'ECONNREFUSED':
+                        this.shouldReconnect = true;
                         this.reconnect();
                         break;
                     default:
@@ -129,6 +129,8 @@ class WebSocketClient extends EventEmitter {
 
         if (this.shouldReconnect || event.code !== 1000) {
             if (!this.isReconnecting) {
+                console.log(22)
+                this.shouldReconnect = true;
                 this.reconnect();
             }
             this.isReconnecting = false;
@@ -141,16 +143,18 @@ class WebSocketClient extends EventEmitter {
     async _processQueue() {
         if (this.processingQueue || !this.messageQueue.length) return;
 
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            console.log("WebSocket not open, deferring queue processing...");
+            return;
+        }
+
         this.processingQueue = true;
 
         while (this.messageQueue.length) {
+
             const { payload, id, resolve, reject } = this.messageQueue.shift();
 
             try {
-                if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-                    throw new Error("WebSocket is not open")
-                }
-
                 this.socket.send(JSON.stringify(payload));
                 console.log("Message sent:", payload);
 
