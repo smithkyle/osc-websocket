@@ -24,7 +24,8 @@ class WebSocketClient extends EventEmitter {
 
             this.socket.onopen = () => this.onOpen(resolve);
             this.socket.onerror = (event) => {
-                switch (event.error.code) {
+                const errorCode = event.error?.code || event?.code || "UNKNOWN";
+                switch (errorCode) {
                     case 'ECONNREFUSED':
                         this.shouldReconnect = true;
                         this.reconnect();
@@ -86,6 +87,12 @@ class WebSocketClient extends EventEmitter {
         this.reconnectAttempts = 0;
         this.shouldReconnect = false;
         this.processingQueue = false;
+
+        // Reject pending promises in the message queue
+        while (this.messageQueue.length) {
+            const { reject } = this.messageQueue.shift();
+            reject(new Error("WebSocket closed during message queue processing"));
+        }
     
         // Emit a cleanup or failure event, if necessary
         this.emit("cleanup");
@@ -96,6 +103,7 @@ class WebSocketClient extends EventEmitter {
         this.reconnectAttempts = 0;
         this.emit("open");
         resolve();
+        this.processingQueue = false;
         this._processQueue();
     }
 
@@ -149,39 +157,46 @@ class WebSocketClient extends EventEmitter {
 
         this.processingQueue = true;
 
-        while (this.messageQueue.length) {
+        try {
+            while (this.messageQueue.length) {
 
-            const { payload, id, resolve, reject } = this.messageQueue.shift();
+                const { payload, id, resolve, reject } = this.messageQueue.shift();
 
-            try {
-                this.socket.send(JSON.stringify(payload));
-                console.log("Message sent:", payload);
+                try {
+                    this.socket.send(JSON.stringify(payload));
+                    console.log("Message sent:", payload);
 
-                if (id) {
-                    const responseEvent = `response:${id}`;
-                    const response = await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                            this.off(responseEvent, resolve);
-                            reject(new Error(`Timeout waiting for response to message id: ${id}`));
-                        }, this.responseTimeout);
+                    if (id) {
+                        const responseEvent = `response:${id}`;
+                        const response = await new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                this.off(responseEvent, resolve);
+                                reject(new Error(`Timeout waiting for response to message id: ${id}`));
+                            }, this.responseTimeout);
 
-                        this.once(responseEvent, (message) => {
-                            clearTimeout(timeout);
-                            resolve(message)
-                        });
-                    })
-                    resolve(response)
+                            this.once(responseEvent, (message) => {
+                                clearTimeout(timeout);
+                                resolve(message)
+                            });
+                        })
+                        resolve(response)
+                    }
+                    else {
+                        await new Promise((response) => this.once("message", response));
+                        resolve()
+                    }
                 }
-                else {
-                    await new Promise((response) => this.once("message", response));
-                    resolve()
+                catch (error) {
+                    reject(error)
                 }
-            }
-            catch (error) {
-                reject(error)
             }
         }
-        this.processingQueue = false;
+        catch (globalError) {
+            console.error("Queue processing error:", globalError);
+        }
+        finally {
+            this.processingQueue = false;
+        }
     }
 
     send(message, id = null) {
@@ -194,11 +209,8 @@ class WebSocketClient extends EventEmitter {
 
     close() {
         this.shouldReconnect = false;
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.removeAllListeners();
-            this.socket.close();
-            console.log("WebSocket closed")
-        }
+        this.cleanupSocket();
+        console.log("WebSocket closed")
     }
 }
 

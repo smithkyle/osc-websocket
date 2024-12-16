@@ -58,7 +58,6 @@ class SibeliusConnect extends WebSocketClient {
             console.log('Received sessionToken:', this.sessionToken);
             saveJSON(SIB_SESSION_FILE, data, (e) => console.log("unable to save sessionToken", e));
             this.handshakeDone = true;
-            // this._processQueue();
         }
         else {
             console.error("Handshake failed");
@@ -94,6 +93,9 @@ class SibeliusConnect extends WebSocketClient {
     }
 
     _removeSessionFile(file) {
+        if (!fs.existsSync(file)) {
+            return;
+        }
         fs.unlink(file, (error) => {
             if (error) {
                 console.warn(`Error removing ${file}`, error);
