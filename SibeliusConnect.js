@@ -1,4 +1,8 @@
-const WebSocketClient = require('./WebSocketClient.js')
+const fs = nativeRequire('fs');
+
+const WebSocketClient = require('./WebSocketClient.js');
+
+const SIB_SESSION_FILE = 'sibelius-session.json'
 
 class SibeliusConnect extends WebSocketClient {
     constructor({ appName = 'Sibelius Connect Remote', callbackAddress = '/SibeliusCallback', port = 1898, plugins = [] } = {}) {
@@ -26,6 +30,11 @@ class SibeliusConnect extends WebSocketClient {
             message: 'connect',
         };
 
+        const sessionData = loadJSON(SIB_SESSION_FILE, (e) => {
+            console.log(`${SIB_SESSION_FILE} not found - starting new session`)
+        });
+        this.sessionToken = sessionData?.sessionToken;
+
         if (this.sessionToken) {
             message.sessionToken = this.sessionToken;
         } else if (this.plugins.length > 0) {
@@ -34,14 +43,22 @@ class SibeliusConnect extends WebSocketClient {
         }
 
         this.send(message);
+
+        if (message.sessionToken) {
+            // Sibelius doesn't send a response if reconnecting with a sessionToken,
+            // so we will simulate receiving the sessionToken again
+            this.onMessage({ data: JSON.stringify(sessionData) })
+        }
     }
 
     _processHandshake(data) {
+        console.log(data)
         if (data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log('Received sessionToken:', this.sessionToken);
+            saveJSON(SIB_SESSION_FILE, data, (e) => console.log("unable to save sessionToken", e));
             this.handshakeDone = true;
-            this._processQueue();
+            // this._processQueue();
         }
         else {
             console.error("Handshake failed");
@@ -69,9 +86,23 @@ class SibeliusConnect extends WebSocketClient {
             this.handshakeDone = false;
             this.cleanupSocket();
             this.shouldReconnect = true;
+            
+            this._removeSessionFile(`${__dirname}/${SIB_SESSION_FILE}`);
         }
 
         super.onClose(event)
+    }
+
+    _removeSessionFile(file) {
+        fs.unlink(file, (error) => {
+            if (error) {
+                console.warn(`Error removing ${file}`, error);
+                this.shouldReconnect = false;
+                return;
+            }
+
+            console.log(`Removed ${file}`);
+        })
     }
 
     async send(message) {

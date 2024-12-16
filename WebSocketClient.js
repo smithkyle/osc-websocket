@@ -129,7 +129,6 @@ class WebSocketClient extends EventEmitter {
 
         if (this.shouldReconnect || event.code !== 1000) {
             if (!this.isReconnecting) {
-                console.log(22)
                 this.shouldReconnect = true;
                 this.reconnect();
             }
