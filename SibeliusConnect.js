@@ -1,4 +1,8 @@
-const WebSocketClient = require('./WebSocketClient.js')
+const fs = nativeRequire('fs');
+
+const WebSocketClient = require('./WebSocketClient.js');
+
+const SIB_SESSION_FILE = 'sibelius-session.json'
 
 class SibeliusConnect extends WebSocketClient {
     constructor({ appName = 'Sibelius Connect Remote', callbackAddress = '/SibeliusCallback', port = 1898, plugins = [] } = {}) {
@@ -10,16 +14,26 @@ class SibeliusConnect extends WebSocketClient {
         this.handshakeDone = false;
     }
 
-    onOpen() {
-        this.sendHandshake();
+    onOpen(resolve) {
+        // reset the message queue so we don't send a bunch of queued commands
+        // on reconnect, and because we need to send the handshake message first
+        this.messageQueue = [];
+        this._sendHandshake();
+        
+        super.onOpen(resolve);
     }
 
-    sendHandshake() {
+    _sendHandshake() {
         const message = {
             handshakeVersion: '1.0',
             clientName: this.appName,
             message: 'connect',
         };
+
+        const sessionData = loadJSON(SIB_SESSION_FILE, (e) => {
+            console.log(`${SIB_SESSION_FILE} not found - starting new session`)
+        });
+        this.sessionToken = sessionData?.sessionToken;
 
         if (this.sessionToken) {
             message.sessionToken = this.sessionToken;
@@ -28,35 +42,81 @@ class SibeliusConnect extends WebSocketClient {
             message.plugins = this.plugins;
         }
 
-        this.sendMessage(message);
+        this.send(message);
+
+        if (message.sessionToken) {
+            // Sibelius doesn't send a response if reconnecting with a sessionToken,
+            // so we will simulate receiving the sessionToken again
+            this.onMessage({ data: JSON.stringify(sessionData) })
+        }
     }
 
-    onMessage(data) {
+    _processHandshake(data) {
+        console.log(data)
         if (data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log('Received sessionToken:', this.sessionToken);
-            this.handshakeDone = true;  // Handshake is now complete
-            this.sendQueuedMessages();  // Now safe to send queued messages
+            saveJSON(SIB_SESSION_FILE, data, (e) => console.log("unable to save sessionToken", e));
+            this.handshakeDone = true;
+        }
+        else {
+            console.error("Handshake failed");
+        }
+    }
+
+    onMessage(event) {
+        const data = JSON.parse(event.data);
+
+        if (!this.handshakeDone && data.sessionToken) {
+            this._processHandshake(data);
         }
         
+        super.onMessage(event);
+
         if (this.callbackAddress && this.callbackAddress.length > 0) {
-            receive(this.callbackAddress, data)
+            receive(this.callbackAddress, data);
         }
     }
 
     onClose(event) {
         if (event.code === 1000) {
-            console.log('Connection closed cleanly - send a command to open a new connection');
+            console.log('Connection closing cleanly - will attempt a fresh connection');
             this.sessionToken = null;
             this.handshakeDone = false;
-        } else {
-            console.log('Connection lost, retrying...');
+            this.cleanupSocket();
+            this.shouldReconnect = true;
+            
+            this._removeSessionFile(`${__dirname}/${SIB_SESSION_FILE}`);
         }
+
+        super.onClose(event)
     }
 
-    close() {
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.socket.close(1000, 'Unload');
+    _removeSessionFile(file) {
+        if (!fs.existsSync(file)) {
+            return;
+        }
+        fs.unlink(file, (error) => {
+            if (error) {
+                console.warn(`Error removing ${file}`, error);
+                this.shouldReconnect = false;
+                return;
+            }
+
+            console.log(`Removed ${file}`);
+        })
+    }
+
+    async send(message) {
+        if (!this.socket) {
+            await this.connect()
+        }
+
+        try {
+            super.send(message);
+        }
+        catch (e) {
+            console.error('caught error', e)
         }
     }
 }

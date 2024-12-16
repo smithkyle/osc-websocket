@@ -1,74 +1,217 @@
+const EventEmitter = nativeRequire('events')
 const WebSocket = nativeRequire('ws');
 
-class WebSocketClient {
-    constructor(url, retryTimeout = 2000) {
+class WebSocketClient extends EventEmitter {
+    constructor(url, options = {}) {
+        super();
         this.url = url;
-        this.retryTimeout = retryTimeout;
+        this.reconnectInterval = options.reconnectInterval || 2000;
+        this.maxReconnectAttempts = options.maxReconnectAttempts || 10;
+        this.responseTimeout = options.responseTimeout || 10000;
+
         this.socket = null;
-        this.messageQueue = [];
-        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.shouldReconnect = false;
         this.isReconnecting = false;
+        
+        this.messageQueue = [];
+        this.processingQueue = false;
     }
 
-    connect() {
-        if (this.isConnecting) return;
+    async connect() {
+        return new Promise((resolve, reject) => {
+            this.socket = new WebSocket(this.url)
 
-        this.isConnecting = true;
-        this.socket = new WebSocket(this.url);
+            this.socket.onopen = () => this.onOpen(resolve);
+            this.socket.onerror = (event) => {
+                const errorCode = event.error?.code || event?.code || "UNKNOWN";
+                switch (errorCode) {
+                    case 'ECONNREFUSED':
+                        this.shouldReconnect = true;
+                        this.reconnect();
+                        break;
+                    default:
+                        this.onError(event, reject);
+                }
+            }
+            this.socket.onmessage = (event) => this.onMessage(event);
+            this.socket.onclose = (event) => this.onClose(event);
+        });
+    }
 
-        this.socket.onopen = () => {
+    async reconnect() {
+        if (this.isReconnecting) return;
+
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error("Max reconnect attempts reached");
+            this.cleanupSocket();
+            this.emit("reconnect_failed");
+            return;
+        }
+
+        this.isReconnecting = true;
+        this.reconnectAttempts++;
+        console.log(`Reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+        await new Promise((resolve) => setTimeout(resolve, this.reconnectInterval));
+
+        try {
+            await this.connect();
+            console.log("Reconnected successfully");
+            this.reconnectAttempts = 0;
+            this.emit("reconnect_success");
+        }
+        catch (error) {
+            console.error("Reconnect failed:", error);
+            this.reconnect();
+        }
+        finally {
             this.isReconnecting = false;
-            this.onOpen();
-        };
-
-        this.socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this.onMessage(data);
-        };
-
-        this.socket.onerror = (error) => {
-            console.error('WebSocket error:', error.message);
-            this.onError(error);
-        };
-
-        this.socket.onclose = (event) => {
-            this.onClose(event);
-            if (event.code !== 1000) {
-                this.retry();
-            }
-        };
-
-        this.isConnecting = this.isReconnecting = false;
-    }
-
-    retry() {
-        if (!this.isReconnecting) {
-            this.isReconnecting = true;
-            setTimeout(() => this.connect(), this.retryTimeout);
         }
     }
 
-    sendMessage(message) {
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(message));
-        } else {
-            this.messageQueue.push(message);
-            if (!this.isConnecting && !this.isReconnecting) {
-                this.connect();
-            }
-        }
-    }
+    cleanupSocket() {
+        console.log("Cleaning up WebSocket client");
 
-    sendQueuedMessages() {
+        // Close the existing socket, if any
+        if (this.socket) {
+            this.socket.removeAllListeners(); // Remove any lingering event listeners
+            if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
+                this.socket.close();
+            }
+            this.socket = null; // Dereference the socket
+        }
+        
+        // Reset state variables
+        this.isReconnecting = false;
+        this.reconnectAttempts = 0;
+        this.shouldReconnect = false;
+        this.processingQueue = false;
+
+        // Reject pending promises in the message queue
         while (this.messageQueue.length) {
-            this.sendMessage(this.messageQueue.shift());
+            const { reject } = this.messageQueue.shift();
+            reject(new Error("WebSocket closed during message queue processing"));
+        }
+    
+        // Emit a cleanup or failure event, if necessary
+        this.emit("cleanup");
+    }
+
+    onOpen(resolve) {
+        console.log("WebSocket connection opened");
+        this.reconnectAttempts = 0;
+        this.emit("open");
+        resolve();
+        this.processingQueue = false;
+        this._processQueue();
+    }
+
+    onError(error, reject) {
+        console.error("WebSocket connection error:", error.error.code, error.message);
+        this.emit("error", error);
+
+        if (reject) reject(error);
+
+        if (this.shouldReconnect) {
+            this.reconnect()
         }
     }
 
-    onOpen() {}
-    onMessage(data) {}
-    onError(error) {}
-    onClose(event) {}
+    onMessage(event) {
+        const message = JSON.parse(event.data);
+        console.log("Message received:", message);
+
+        if (message.id) {
+            this.emit(`response:${message.id}`, message);
+        }
+        else {
+            this.emit("message", message);
+        }
+    }
+
+    onClose(event) {
+        console.warn("WebSocket connection closed:", event.code, event.reason);
+
+        this.emit("close", event);
+
+        if (this.shouldReconnect || event.code !== 1000) {
+            if (!this.isReconnecting) {
+                this.shouldReconnect = true;
+                this.reconnect();
+            }
+            this.isReconnecting = false;
+        }
+        else {
+            this.cleanupSocket();
+        }
+    }
+
+    async _processQueue() {
+        if (this.processingQueue || !this.messageQueue.length) return;
+
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            console.log("WebSocket not open, deferring queue processing...");
+            return;
+        }
+
+        this.processingQueue = true;
+
+        try {
+            while (this.messageQueue.length) {
+
+                const { payload, id, resolve, reject } = this.messageQueue.shift();
+
+                try {
+                    this.socket.send(JSON.stringify(payload));
+                    console.log("Message sent:", payload);
+
+                    if (id) {
+                        const responseEvent = `response:${id}`;
+                        const response = await new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                this.off(responseEvent, resolve);
+                                reject(new Error(`Timeout waiting for response to message id: ${id}`));
+                            }, this.responseTimeout);
+
+                            this.once(responseEvent, (message) => {
+                                clearTimeout(timeout);
+                                resolve(message)
+                            });
+                        })
+                        resolve(response)
+                    }
+                    else {
+                        await new Promise((response) => this.once("message", response));
+                        resolve()
+                    }
+                }
+                catch (error) {
+                    reject(error)
+                }
+            }
+        }
+        catch (globalError) {
+            console.error("Queue processing error:", globalError);
+        }
+        finally {
+            this.processingQueue = false;
+        }
+    }
+
+    send(message, id = null) {
+        return new Promise((resolve, reject) => {
+            const payload = id ? { id, ...message } : { ...message };
+            this.messageQueue.push({ payload, id, resolve, reject });
+            this._processQueue();
+        });
+    }
+
+    close() {
+        this.shouldReconnect = false;
+        this.cleanupSocket();
+        console.log("WebSocket closed")
+    }
 }
 
 module.exports = WebSocketClient;
