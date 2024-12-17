@@ -1,4 +1,4 @@
-const { createHash } = nativeRequire('crypto');
+const { createHash, randomUUID } = nativeRequire('crypto');
 
 const WebSocketClient = require('./WebSocketClient.js')
 
@@ -36,8 +36,8 @@ class OBSWebsocket extends WebSocketClient {
         if (this.eventSubscriptions) { 
             message.eventSubscriptions = this.eventSubscriptions;
         }
-        
-        this.send(message);
+
+        super.send(message);
     }
 
     onMessage(event) {
@@ -51,7 +51,7 @@ class OBSWebsocket extends WebSocketClient {
             this._processQueue();  // Now safe to send queued messages
         }
 
-        const eventName = data.requestId ? `response:${data.requestId}` : "message"
+        const eventName = data.d.requestId ? `response:${data.d.requestId}` : "message"
         this.emit(eventName, data)
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
@@ -77,8 +77,13 @@ class OBSWebsocket extends WebSocketClient {
             await this.connect()
         }
 
-        if (id) {
-            message.requestId = id
+        if (message.d.requestId) {
+            id = message.d.requestId;
+        }
+        
+        if (!id) {
+            id = randomUUID();
+            message.d.requestId = id;
         }
 
         try {
