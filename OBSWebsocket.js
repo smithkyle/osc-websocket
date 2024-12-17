@@ -76,14 +76,9 @@ class OBSWebsocket extends WebSocketClient {
         if (!this.socket) {
             await this.connect()
         }
-
-        if (message.d.requestId) {
-            id = message.d.requestId;
-        }
         
         if (!id) {
-            id = randomUUID();
-            message.d.requestId = id;
+            id = message.d.requestId = randomUUID();
         }
 
         try {

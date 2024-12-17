@@ -53,7 +53,7 @@ module.exports = {
                             'name': plugin.name
                         }
                         if (plugin.method) {
-                            msg.method = plugin.method
+                            msg.method = plugin.method;
                         }
                         if (plugin.args) {
                             msg.args = plugin.args
@@ -64,12 +64,13 @@ module.exports = {
             }
             else if (address === '/DoricoRemote') {
                 args.forEach(arg => {
-                    global.DoricoRemote.send(JSON.parse(arg.value))
+                    global.DoricoRemote.send(JSON.parse(arg.value));
                 })
             }
             else if (address === '/OBSWebsocket') {
                 args.forEach(arg => {
-                    global.OBSWebsocket.send(JSON.parse(arg.value))
+                    const message = JSON.parse(arg.value);
+                    global.OBSWebsocket.send(message, message.d.requestId);
                 })
             }
         }
