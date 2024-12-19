@@ -55,7 +55,7 @@ class OBSWebsocket extends WebSocketClient {
         this.emit(eventName, data)
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
-            receive(this.callbackAddress, data)
+            receive('localhost', 8080, '/SET', this.callbackAddress, JSON.stringify(data));
         }
     }
 
