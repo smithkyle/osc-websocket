@@ -1,4 +1,5 @@
 const { createHash, randomUUID } = nativeRequire('crypto');
+const path = nativeRequire('path');
 
 const WebSocketClient = require('./WebSocketClient.js')
 
@@ -87,6 +88,20 @@ class OBSWebsocket extends WebSocketClient {
         catch (e) {
             console.error('caught error', e)
         }
+    }
+
+    convertToOsc(response) {
+        const { requestType } = response.d
+        const modeMatch = requestType.match(/^(Get|Set|Create|Remove|Trigger)/g)
+        const mode =  Array.isArray(modeMatch) && modeMatch.length === 1 ? modeMatch : requestType;
+
+        const itemMatch = requestType.match(/(Scene|Stream|Output)/)
+
+        return { address, args, host, port };
+    }
+
+    convertFromOsc(osc) {
+        const { address, args, host, port } = osc;
     }
 
     close() {
