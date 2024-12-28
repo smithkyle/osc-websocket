@@ -24,7 +24,7 @@ module.exports = {
                 return data
             }
 
-            if (address === '/SibeliusConnect' || path.dirname(address) === '/SibeliusConnect') {
+            if (address === '/sibelius' || path.dirname(address) === '/sibelius') {
                 args.map(arg => {
                     let addr = address
                     arg = arg.value
@@ -62,7 +62,7 @@ module.exports = {
                     return new Promise(resolve => setTimeout(resolve, 50));
                 }, Promise.resolve())
             }
-            else if (address === '/DoricoRemote') {
+            else if (address === '/dorico') {
                 args.forEach(arg => {
                     global.DoricoRemote.sendMessage(JSON.parse(arg.value))
                 })
