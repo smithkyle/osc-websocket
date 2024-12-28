@@ -64,7 +64,7 @@ module.exports = {
             }
             else if (address === '/dorico') {
                 args.forEach(arg => {
-                    global.DoricoRemote.sendMessage(JSON.parse(arg.value))
+                    global.DoricoRemote.send(JSON.parse(arg.value))
                 })
             }
         }

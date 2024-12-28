@@ -10,10 +10,12 @@ class DoricoRemote extends WebSocketClient {
     }
 
     onOpen() {
-        this.sendHandshake();
+        this._sendHandshake();
+
+        super.onOpen();
     }
 
-    sendHandshake() {
+    _sendHandshake() {
         const message = {
             message: 'connect',
             clientName: this.appName,
@@ -24,10 +26,10 @@ class DoricoRemote extends WebSocketClient {
             message.sessionToken = this.sessionToken;
         }
         
-        this.sendMessage(message);
+        this.send(message);
     }
 
-    onMessage(data) {
+    _processHandshake(data) {
         if (data.message === 'sessiontoken' && data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log(`Received sessiontoken: ${this.sessionToken} - completing handshake`);
@@ -37,32 +39,24 @@ class DoricoRemote extends WebSocketClient {
                 sessionToken: this.sessionToken
             }
 
-            this.sendMessage(message);
+            this.send(message);
         }
         else if (data.message === 'response' && data.code === 'kConnected') {
             console.log(`Handshake complete for ${this.appName}`);
             this.handshakeDone = true;  // Handshake is now complete
-            this.sendQueuedMessages();  // Now safe to send queued messages
+            this._processQueue();  // Now safe to send queued messages
         }
+    }
+
+    onMessage(data) {
+        if (!this.handshakeDone && data.message === 'sessiontoken') {
+            this._processHandshake(data);
+        }
+        
+        super.onMessage(data);
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data)
-        }
-    }
-
-    onClose(event) {
-        if (event.code === 1000) {
-            console.log('Connection closed cleanly - send a command to open a new connection');
-            // this.sessionToken = null;
-            // this.handshakeDone = false;
-        } else {
-            console.log('Connection lost, retrying...');
-        }
-    }
-
-    close() {
-        if (this.socket?.readyState === WebSocket.OPEN) {
-            this.socket.close(1000, 'Unload');
         }
     }
 }
