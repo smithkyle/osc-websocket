@@ -90,7 +90,7 @@ class OBSWebsocket extends WebSocketClient {
         }
     }
 
-    convertToOsc(response) {
+    parseToOsc(response) {
         const { requestType } = response.d
         const modeMatch = requestType.match(/^(Get|Set|Create|Remove|Trigger)/g)
         const mode =  Array.isArray(modeMatch) && modeMatch.length === 1 ? modeMatch : requestType;
@@ -100,8 +100,118 @@ class OBSWebsocket extends WebSocketClient {
         return { address, args, host, port };
     }
 
-    convertFromOsc(osc) {
+    parseToJson(osc) {
         const { address, args, host, port } = osc;
+        const parts = address.replace('/obs/','').split('/');
+        let rootKey = parts[0];
+        let prefix = args[0]?.value ? 'Set' : 'Get';
+        let suffix = '';
+
+        const actions = ['Create', 'Remove', 'Duplicate', 'Trigger'];
+        const isUuid = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(str);
+        const uuidOrName = (str) => isUuid(str) ? 'uuid' : 'name';
+        const isList = (str) => /s$/.test(str);
+        const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+        const idType = (type, value) => `${type.toLowerCase()}${capitalize(uuidOrName(value))}`;
+
+        const request = { op: 6, d: {} }
+
+        // if (isList(parts[parts.length - 1])) {
+        //     rootKey = parts[parts.length - 1].slice(0, -1);
+        //     suffix = 'List';
+        // }
+
+        switch (rootKey) {
+            case 'scene':
+            case 'scenes':
+                if (isList(parts[parts.length - 1])) {
+                    parts[parts.length - 1] = parts[parts.length - 1].slice(0, -1);
+                    rootKey = parts[0];
+                    suffix = 'List';
+                }
+
+                rootKey = capitalize(rootKey);
+
+                if (parts.length === 1 && suffix !== 'List') {
+                    parts[1] = 'program';
+                }
+
+                if (parts[1] === 'preview' || parts[1] === 'program') {
+                    request.d.requestType = `${prefix}Current${capitalize(parts[1])}${rootKey}`;
+                    if (prefix === 'Set') {
+                        const id = idType(rootKey, args[0].value);
+                        request.d.requestData = {
+                            [id]: args[0].value
+                        }
+                    }
+                }
+                else if (parts[1]) {
+                    if (actions.includes(capitalize(parts[1]))) {
+                        request.d.requestType = `${capitalize(parts[1])}${rootKey}`;
+                        if (args[0]) {
+                            const id = idType(rootKey, args[0].value);
+                            request.d.requestData = {
+                                [id]: args[0].value
+                            }
+                        }
+                    }
+                    else {
+                        const id = idType(rootKey, parts[1]);
+                        request.d.requestData = {
+                            [id]: parts[1]
+                        }
+                        parts[2] = !parts[2] ? 'name' : parts[2];
+                        if (parts[2] === 'name' && prefix === 'Set') {
+                            request.d.requestData[`new${rootKey}Name`] = args[0].value;
+                        }
+                        request.d.requestType = `${prefix}${rootKey}${capitalize(parts[2])}${suffix}`
+                    }
+                }
+                else {
+                    request.d.requestType = `${prefix}${rootKey}${suffix}`;
+                }
+                break;
+        }
+
+        if (!request.d.requestId) {
+            request.d.requestId = randomUUID();
+        }
+        return request;
+
+        const schemaHandlers = {
+            scene: (parts) => {
+                const sceneRequest = {};
+                if (suffix === 'List') {
+
+                }
+                if (!parts[2] || parts[2].toLowerCase() === 'preview') {
+                    const sceneType = !parts[2] === 'Preview' ? 'Preview' : 'Program';
+                    sceneRequest.requestType = `${mode}Current${sceneType}Scene`
+                    if (mode === 'Set') {
+                        const id = idType('scene', args[0].value);
+                        sceneRequest.requestData[id] = args[0].value;
+                    }
+                    return sceneRequest;
+                }
+                else if (parts[2] === 'create' || parts[2] === 'remove') {
+                    sceneRequest.requestType = `${capitalize(parts[2])}Scene`
+                    const identifier = `scene${capitalize(uuidOrName(args[0].value))}`;
+                    sceneRequest.requestData[identifier] = args[0].value;
+                    return sceneRequest;
+                }
+                else if (!parts[3]) {
+                    sceneRequest.requestType = `${mode}SceneName`;
+                    const identifier = `scene${capitalize(uuidOrName(parts[2]))}`;
+                    sceneRequest.requestData[identifier] = parts[2];
+                    return sceneRequest;
+                }
+            }
+        }
+
+        return {
+            op: 6,
+            d: schemaHandlers[rootKey](parts)
+        }
     }
 
     close() {

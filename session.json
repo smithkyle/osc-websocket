@@ -642,7 +642,7 @@
             "top": 340,
             "left": 0,
             "lock": false,
-            "id": "GetSceneList",
+            "id": "GetScenes",
             "visible": true,
             "interaction": true,
             "comments": "",
@@ -673,7 +673,7 @@
             "value": "",
             "default": "",
             "linkId": "",
-            "address": "auto",
+            "address": "/obs/scenes",
             "preArgs": "",
             "typeTags": "",
             "decimals": 2,
@@ -681,7 +681,7 @@
             "ignoreDefaults": false,
             "bypass": false,
             "onCreate": "",
-            "onValue": "const msg = {\n  \"op\": 6,\n  \"d\": {\n    \"requestType\": \"GetSceneList\",\n    \"requestId\": \"GetSceneList\"\n  }\n}\nsend('localhost:8080', '/OBSWebsocket', msg)"
+            "onValue": "// const msg = {\n//   \"op\": 6,\n//   \"d\": {\n//     \"requestType\": \"GetSceneList\",\n//     \"requestId\": \"GetSceneList\"\n//   }\n// }\n// send('localhost:8080', '/OBSWebsocket', msg)"
           },
           {
             "type": "clone",

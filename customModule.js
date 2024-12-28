@@ -114,7 +114,10 @@ module.exports = {
                     global.DoricoRemote.send(JSON.parse(arg.value));
                 })
             }
-            else if (address === '/OBSWebsocket') {
+            else if (address.startsWith('/obs')) {
+                const message = global.OBSWebsocket.parseToJson(data);
+                global.OBSWebsocket.send(message, message.d.requestId);
+                return;
                 args.forEach(arg => {
                     const message = JSON.parse(arg.value);
                     global.OBSWebsocket.send(message, message.d.requestId);
