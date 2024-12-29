@@ -1,4 +1,3 @@
-// const fs = nativeRequire('fs')
 const path = nativeRequire('path')
 
 const SibeliusConnect = require('SibeliusConnect.js')
@@ -25,7 +24,7 @@ module.exports = {
             }
 
             if (address === '/sibelius' || path.dirname(address) === '/sibelius') {
-                args.map(arg => {
+                args.forEach(arg => {
                     let addr = address
                     arg = arg.value
 
@@ -54,13 +53,8 @@ module.exports = {
                         }
                     }
 
-                    return msg
+                    global.SibeliusConnect.send(msg)
                 })
-                .reduce(async (a, msg) => {
-                    await a
-                    global.SibeliusConnect.sendMessage(msg)
-                    return new Promise(resolve => setTimeout(resolve, 50));
-                }, Promise.resolve())
             }
             else if (address === '/dorico') {
                 args.forEach(arg => {

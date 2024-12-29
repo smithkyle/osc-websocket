@@ -15,10 +15,13 @@ class SibeliusConnect extends WebSocketClient {
     }
 
     onOpen(resolve) {
-        // reset the message queue so we don't send a bunch of queued commands
-        // on reconnect, and because we need to send the handshake message first
+        let savedMessageQueue = this.messageQueue;
         this.messageQueue = [];
+
         this._sendHandshake();
+
+        this.messageQueue = savedMessageQueue;
+        savedMessageQueue = []
         
         super.onOpen(resolve);
     }
@@ -42,7 +45,7 @@ class SibeliusConnect extends WebSocketClient {
             message.plugins = this.plugins;
         }
 
-        this.send(message);
+        super.send(message);
 
         if (message.sessionToken) {
             // Sibelius doesn't send a response if reconnecting with a sessionToken,
@@ -109,7 +112,7 @@ class SibeliusConnect extends WebSocketClient {
 
     async send(message) {
         if (!this.socket) {
-            await this.connect()
+            this.connect();
         }
 
         try {
