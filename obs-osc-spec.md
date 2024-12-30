@@ -1,42 +1,39 @@
+
 /scenes = GetSceneList
-/scene(/program) = (Get|Set)CurrentProgramScene
-/scene/preview = (Get|Set)CurrentPreviewScene
-/scene/(create|remove) = (Create|Remove)Scene
-/scene/(name|uuid)/name = (Get|Set)SceneName
-
-/scene/(name|uuid)/sceneTransitionOverride = (Get|Set)SceneSceneTransitionOverride
-
+/scene(/program) (name|uuid) = (Get|Set)CurrentProgramScene
+/scene/preview (name|uuid) = (Get|Set)CurrentPreviewScene
+/scene/(create|remove) (name|uuid) = (Create|Remove)Scene
 /scene/(name|uuid)/items = GetSceneItemList
 /scene/(name|uuid)/item/(create|remove|duplicate) = (Create|Remove|Duplicate)SceneItem
 /scene/(name|uuid)/item/(sourceName)/id ?searchOffset ?sceneName ?sceneUuid = GetSceneItemId
 /scene/(name|uuid)/item/(name|uuid|id)/source = GetSceneItemSource
 /scene/(name|uuid)/item/(name|uuid|id)/(transform|enabled|locked|blendmode|index) = (Get|Set)SceneItem(Transform|Enabled|Locked|BlendMode|Index)
+/scene/(name|uuid)/name = (Get|Set)SceneName
+/scene/(name|uuid)/sceneTransitionOverride = (Get|Set)SceneSceneTransitionOverride
+
+/scene/transitions = GetSceneTransitionList
+/scene/transitions/kinds = GetTransitionKindList
+/scene/transition/current (transitionName) = (Get|Set)CurrentSceneTransition
+/scene/transition/current/(duration|settings) = (Get|Set)CurrentSceneTransition(Duration|Settings)
+/scene/transition/current/cursor = GetCurrentSceneTransitionCursor
+/transition/studiomode/trigger = TriggerStudioModeTransition
 
 (alias /inputs)
-/sources = GetInputList
-/sources/kinds = GetInputKindList
+/sources/?kindTypes = GetInputList
+/source/kinds = GetInputKindList
 /sources/special = GetSpecialInputs
+/source/filter/kinds = GetSourceFilterKindList
+/source/filter/kind/(filterKind)/??defaultSettings?? = GetSourceFilterDefaultSettings
 /source/(create|remove) = (Create|Remove)Input
 /source/(name|uuid)/active = GetSourceActive
-/source/(name|uuid)/screenshot/(get|save) = (Get|Save)SourceScreenshot
+/source/(name|uuid)/audio/(balance|…)
+/source/(name|uuid)/filters = GetSourceFilterList
 /source/(name|uuid)/filter/(create|remove) = (Create|Remove)SourceFilter
 /source/(name|uuid)/media/status = GetMediaInputStatus
 /source/(name|uuid)/media/cursor (#|+/-#) = (Set|Offset)MediaInputCursor
 /source/(name|uuid)/media/trigger (play|pause|stop|restart|next|previous|null/none) = TriggerMediaInputAction
-
-/filters = GetSourceFilterList
-/filters/kinds = GetSourceFilterKindList
-/filters/kind/(filterName)/??defaultSettings?? = GetSourceFilterDefaultSettings
-
-/transitions = GetSceneTransitionList
-/transitions/kinds = GetTransitionKindList
-/transition/current (transitionName) = (Get|Set)CurrentSceneTransition
-/transition/current/(duration|settings) = (Get|Set)CurrentSceneTransition(Duration|Settings)
-/transition/current/cursor = GetCurrentSceneTransitionCursor
-/transition/studiomode/trigger = TriggerStudioModeTransition
-
 /source/(name|uuid)/name newName = SetInputName
-/source/*/audio/(balance|…)
+/source/(name|uuid)/screenshot/(get|save) = (Get|Save)SourceScreenshot
 
 /output/virtualcam/(status|toggle|start|stop)
 /output/replaybuffer/(status|starts|stop|toggle|save)
@@ -51,4 +48,6 @@
 /record/split
 /record/createchapter chapterName
 
-Accept arguments as json AND array of key=value pairs
+Accept arguments as json AND array of key=value pairs?
+
+Array of available/default endpoints for a given path? (i.e. request params?)

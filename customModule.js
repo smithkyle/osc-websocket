@@ -23,45 +23,45 @@ module.exports = {
         
         const { address, args, host, port } = data;
 
-        if (address === '/OBSCallback') {
-            const request = JSON.parse(args[0].value).d;
+        // if (address === '/OBSCallback') {
+        //     const request = JSON.parse(args[0].value).d;
 
-            if (!request.requestType) {
-                return data;
-            }
-            let newAddress = '/OBSCallback'//`/${request.requestType.replace('Get','')}`;
+        //     if (!request.requestType) {
+        //         return data;
+        //     }
+        //     let newAddress = '/OBSCallback'//`/${request.requestType.replace('Get','')}`;
 
-            let newArgs = args
-            console.log(newAddress)
-            switch (newAddress) {
-                case 'SceneList':
-                    newArgs = request.responseData
-                        .scenes.map(scene => {
-                            return { type: "s", value: `${scene.sceneUuid}|${scene.sceneName}` }
-                        });
-                    break;
-                case '/InputList':
-                    // request.responseData.inputs.forEach(async (input) => {
-                    //     const message = {
-                    //         "op": 6,
-                    //         "d": {
-                    //           "requestType": "GetInputVolume",
-                    //           "requestId": input.inputUuid,
-                    //           "requestData": {
-                    //             "inputUuid": input.inputUuid,
-                    //           }
-                    //         }
-                    //       }
-                    //     receive('localhost', 8080, '/SET', '/OBSWebsocket', JSON.stringify(message))
+        //     let newArgs = args
+        //     console.log(newAddress)
+        //     switch (newAddress) {
+        //         case 'SceneList':
+        //             newArgs = request.responseData
+        //                 .scenes.map(scene => {
+        //                     return { type: "s", value: `${scene.sceneUuid}|${scene.sceneName}` }
+        //                 });
+        //             break;
+        //         case '/InputList':
+        //             // request.responseData.inputs.forEach(async (input) => {
+        //             //     const message = {
+        //             //         "op": 6,
+        //             //         "d": {
+        //             //           "requestType": "GetInputVolume",
+        //             //           "requestId": input.inputUuid,
+        //             //           "requestData": {
+        //             //             "inputUuid": input.inputUuid,
+        //             //           }
+        //             //         }
+        //             //       }
+        //             //     receive('localhost', 8080, '/SET', '/OBSWebsocket', JSON.stringify(message))
 
-                        // await global.OBSWebsocket.send(message, message.d.requestId);
-                    // })
-                    // newAddress = address
-                    break;
-            }
+        //                 // await global.OBSWebsocket.send(message, message.d.requestId);
+        //             // })
+        //             // newAddress = address
+        //             break;
+        //     }
 
-            return { address: newAddress, args: newArgs, host, port }
-        }
+        //     return { address: newAddress, args: newArgs, host, port }
+        // }
 
         return data;
     },
@@ -116,12 +116,12 @@ module.exports = {
             }
             else if (address.startsWith('/obs')) {
                 const message = global.OBSWebsocket.parseToJson(data);
-                global.OBSWebsocket.send(message, message.d.requestId);
+                global.OBSWebsocket.send(message);
                 return;
-                args.forEach(arg => {
-                    const message = JSON.parse(arg.value);
-                    global.OBSWebsocket.send(message, message.d.requestId);
-                })
+                // args.forEach(arg => {
+                //     const message = JSON.parse(arg.value);
+                //     global.OBSWebsocket.send(message, message.d.requestId);
+                // })
             }
         }
         catch (e) {

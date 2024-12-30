@@ -1,5 +1,4 @@
 const { createHash, randomUUID } = nativeRequire('crypto');
-const path = nativeRequire('path');
 
 const WebSocketClient = require('./WebSocketClient.js')
 
@@ -18,6 +17,7 @@ class OBSWebsocket extends WebSocketClient {
             op: 1,
             d: {
                 rpcVersion: 1,
+                // eventSubscriptions: (1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7 | 1 << 8 | 1 << 9 | 1 << 10 | 1 << 16)
             }
         }
         
@@ -51,13 +51,17 @@ class OBSWebsocket extends WebSocketClient {
             this.handshakeDone = true;  // Handshake is now complete
             this._processQueue();  // Now safe to send queued messages
         }
-
+        
         const eventName = data.d.requestId ? `response:${data.d.requestId}` : "message"
         this.emit(eventName, data)
-        
-        if (this.callbackAddress && this.callbackAddress.length > 0) {
-            receive('localhost', 8080, '/SET', this.callbackAddress, JSON.stringify(data));
-        }
+
+        const { address, args, host, port } = this.parseToOsc(data);
+
+        receive(host, port, address, ...args);
+
+        // if (this.callbackAddress && this.callbackAddress.length > 0) {
+        //     receive('localhost', 8080, '/SET', this.callbackAddress, JSON.stringify(data));
+        // }
     }
 
     onClose(event) {
@@ -73,9 +77,9 @@ class OBSWebsocket extends WebSocketClient {
         super.onClose(event);
     }
 
-    async send(message, id = null) {
+    send(message, id = null) {
         if (!this.socket) {
-            await this.connect()
+            this.connect()
         }
         
         if (!id) {
@@ -91,12 +95,128 @@ class OBSWebsocket extends WebSocketClient {
     }
 
     parseToOsc(response) {
-        const { requestType } = response.d
-        const modeMatch = requestType.match(/^(Get|Set|Create|Remove|Trigger)/g)
-        const mode =  Array.isArray(modeMatch) && modeMatch.length === 1 ? modeMatch : requestType;
+        // let address = '/obs/';
+        const paths = ['/obs'];
+        let args = [];
+        let host = 'localhost';
+        let port = 8080;
 
-        const itemMatch = requestType.match(/(Scene|Stream|Output)/)
+        const type = response.d.eventType || response.d.requestType;
+        const data = response.d.eventData || response.d.responseData;
 
+        if (!type) {
+            return {
+                address: this.callbackAddress,
+                args: [JSON.stringify(response)],
+                host: 'localhost',
+                port: 8080
+            }
+        }
+
+        const collections = ['Scene', 'Input', 'Output', 'Source', 'Transition', 'Profile', 'Record', 'Stream']
+        const parts = type.match(/[A-Z][a-z]+/g)
+
+        let collection
+        for (const c of collections) {
+            if (parts.includes(c)) {
+                collection = parts.includes('List') ? 'List' : c;
+                paths.push(c.toLowerCase() + (parts.includes('List') ? 's' : ''));
+                break;
+            }
+        }
+
+        switch (collection) {
+            case 'List':
+                const colType = paths[paths.length - 1];
+                data[colType].forEach(item => args.push(item[`${colType.slice(0, -1)}Name`]));
+                // data[colType].forEach(item => args.push(item));
+                break;
+            case 'Scene':
+                ['Preview', 'Program'].forEach(p => {
+                    if (parts.indexOf(p) != -1) {
+                        paths.push(p.toLowerCase())
+                        if (data) {
+                            args.push(data.sceneName);
+                        }
+                        // args.push({ name: data.sceneName, uuid: data.sceneUuid });
+                    }
+                });
+                break;
+            case 'Input':
+                if (data && data.inputName) {
+                    paths.push(encodeURIComponent(data.inputName), parts[parts.length - 2].toLowerCase());
+                    args.push('inputVolumeDb', data.inputVolumeDb)
+                    console.log('getting volume', data.inputVolumeDb);
+                }
+                if (type === 'InputVolumeMeters') {
+                    // https://github.com/obsproject/obs-websocket/commit/d48ddef0318af1e370a4d0b77751afc14ac6b140
+                    data.inputs.forEach(input => {
+                        const meters = {};
+                        ['left', 'right'].forEach((channel, i) => {
+                            const [mag, peak, inputPeak] = input.inputLevelsMul[i].map(level => 20.0 * Math.log10(level));
+                            meters[channel] = { mag, peak, inputPeak}
+                        })
+                        // receive('localhost', 8080, this.callbackAddress, { [input.inputName]: meters });
+                    })
+                    return {
+                        address: this.callbackAddress,
+                        args: [JSON.stringify(response)],
+                        host: 'localhost',
+                        port: 8080
+                    }
+                }
+                break;
+            default:
+                return {
+                    address: this.callbackAddress,
+                    args: [JSON.stringify(response)],
+                    host: 'localhost',
+                    port: 8080
+                }
+        }
+
+        // switch (type) {
+        //     case 'GetSceneList':
+        //     case 'SceneListChanged':
+        //         data.scenes.forEach(scene => args.push(scene.sceneName));
+        //         address = '/obs/scenes';
+        //         ['Program', 'Preview'].forEach(p => {
+        //             const d = { d: { requestType: `GetCurrent${p}Scene` , responseData: { sceneName: data[`current${p}SceneName`]} } }
+        //             this.onMessage({ data: JSON.stringify(d) })
+        //         })
+        //         break;
+        //     case 'GetCurrentProgramScene':
+        //     case 'SetCurrentProgramScene':
+        //     case 'GetCurrentPreviewScene':
+        //     case 'SetCurrentPreviewScene':
+        //         address = `/obs/scene/${type.match(/Program|Preview/)[0].toLowerCase()}`
+        //         args.push(data.sceneName);
+        //         break;
+        // }
+
+        // const parts = requestType.match(/[A-Z][a-z]+/g)
+
+        // const path = []
+        // const args = [];
+
+        // const mode = parts[0]
+        // let collection = parts[1]
+        // path.push(collection.toLowerCase());
+
+        // switch (collection) {
+        //     case 'Scene':
+        //         if (parts[parts.length - 1] === 'List') {
+        //             path[path.length - 1] += 's';
+        //             data.scenes.forEach(scene => args.push(scene.sceneName))
+        //             receive('localhost', 8080, '/obs/scene', data.currentProgramSceneName)
+        //             receive('localhost', 8080, '/obs/scene/program', data.currentProgramSceneName)
+        //             receive('localhost', 8080, '/obs/scene/preview', data.currentPreviewSceneName)
+        //         }
+        //         break;
+        // }
+
+        
+        const address = paths.join('/');
         return { address, args, host, port };
     }
 
@@ -116,22 +236,19 @@ class OBSWebsocket extends WebSocketClient {
 
         const request = { op: 6, d: {} }
 
-        // if (isList(parts[parts.length - 1])) {
-        //     rootKey = parts[parts.length - 1].slice(0, -1);
-        //     suffix = 'List';
-        // }
+        if (isList(parts[parts.length - 1])) {
+            parts[parts.length - 1] = parts[parts.length - 1].slice(0, -1);
+            suffix = 'List';
+
+            if (parts.length === 1) {
+                rootKey = parts[0];
+            }
+        }
+        
+        rootKey = capitalize(rootKey);
 
         switch (rootKey) {
-            case 'scene':
-            case 'scenes':
-                if (isList(parts[parts.length - 1])) {
-                    parts[parts.length - 1] = parts[parts.length - 1].slice(0, -1);
-                    rootKey = parts[0];
-                    suffix = 'List';
-                }
-
-                rootKey = capitalize(rootKey);
-
+            case 'Scene':
                 if (parts.length === 1 && suffix !== 'List') {
                     parts[1] = 'program';
                 }
@@ -171,11 +288,21 @@ class OBSWebsocket extends WebSocketClient {
                     request.d.requestType = `${prefix}${rootKey}${suffix}`;
                 }
                 break;
+            case 'Input':
+                // AUDIOTRACKS MAY NOT WORK????
+                const endpoints = ['create', 'remove', 'list', 'name', 'settings', 'mute', 'volume', 'audiobalance', 'audiosyncoffset', 'audiomonitortype', 'audiotracks']
+                const endpoint = endpoints.includes(parts[parts.length - 1]) ? capitalize(parts[parts.length - 1]) : '';
+                if (endpoint.length > 0) {
+                    const id = idType(rootKey, decodeURIComponent(parts[1]));
+                    request.d.requestData = {
+                        [id]: decodeURIComponent(parts[1]),
+                        [args[0].value]: args[1].value
+                    }
+                }
+                request.d.requestType = `${prefix}${rootKey}${endpoint}${suffix}`;
+                break;
         }
 
-        if (!request.d.requestId) {
-            request.d.requestId = randomUUID();
-        }
         return request;
 
         const schemaHandlers = {
