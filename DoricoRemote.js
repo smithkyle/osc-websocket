@@ -9,10 +9,16 @@ class DoricoRemote extends WebSocketClient {
         this.handshakeDone = false;
     }
 
-    onOpen() {
+    onOpen(resolve) {
+        let savedMessageQueue = this.messageQueue;
+        this.messageQueue = [];
+
         this._sendHandshake();
 
-        super.onOpen();
+        // this.messageQueue = savedMessageQueue;
+        // savedMessageQueue = []
+        
+        super.onOpen(resolve);
     }
 
     _sendHandshake() {
@@ -26,10 +32,11 @@ class DoricoRemote extends WebSocketClient {
             message.sessionToken = this.sessionToken;
         }
         
-        this.send(message);
+        super.send(message);
     }
 
     _processHandshake(data) {
+        console.log(data);
         if (data.message === 'sessiontoken' && data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log(`Received sessiontoken: ${this.sessionToken} - completing handshake`);
@@ -39,7 +46,7 @@ class DoricoRemote extends WebSocketClient {
                 sessionToken: this.sessionToken
             }
 
-            this.send(message);
+            super.send(message);
         }
         else if (data.message === 'response' && data.code === 'kConnected') {
             console.log(`Handshake complete for ${this.appName}`);
@@ -48,15 +55,30 @@ class DoricoRemote extends WebSocketClient {
         }
     }
 
-    onMessage(data) {
+    onMessage(event) {
+        const data = JSON.parse(event.data);
+        
         if (!this.handshakeDone && data.message === 'sessiontoken') {
             this._processHandshake(data);
         }
         
-        super.onMessage(data);
+        super.onMessage(event);
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data)
+        }
+    }
+
+    async send(message) {
+        if (!this.socket) {
+            this.connect();
+        }
+
+        try {
+            await super.send(message);
+        }
+        catch (e) {
+            console.error('caught error', e)
         }
     }
 }

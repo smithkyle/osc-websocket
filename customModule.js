@@ -24,7 +24,12 @@ module.exports = {
             }
 
             if (address === '/sibelius' || path.dirname(address) === '/sibelius') {
-                args.forEach(arg => {
+                let newArgs = args
+                if (args.length === 1 && args[0].value.indexOf(';') > -1) {
+                    newArgs = args[0].value.split(';').map(v => { return { type: 's', value: v.replace(/^\n|\n$/g, '').trim() } })
+                }
+
+                newArgs.forEach(arg => {
                     let addr = address
                     arg = arg.value
 
@@ -55,6 +60,7 @@ module.exports = {
 
                     global.SibeliusConnect.send(msg)
                 })
+                return;
             }
             else if (address === '/dorico') {
                 args.forEach(arg => {

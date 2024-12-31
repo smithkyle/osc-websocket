@@ -1,8 +1,8 @@
 {
-  "name": "osc-sibelius-connect",
-  "version": "1.0.0",
+  "name": "osc-websocket",
+  "version": "0.1.0",
   "description": "",
-  "main": "sibelius-connect.js",
+  "main": "customModule.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

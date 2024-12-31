@@ -168,22 +168,26 @@ class WebSocketClient extends EventEmitter {
 
                     if (id) {
                         const responseEvent = `response:${id}`;
-                        const response = await new Promise((resolve, reject) => {
+                        const response = await new Promise((res, rej) => {
                             const timeout = setTimeout(() => {
-                                this.off(responseEvent, resolve);
-                                reject(new Error(`Timeout waiting for response to message id: ${id}`));
+                                this.off(responseEvent, res);
+                                rej(new Error(`Timeout waiting for response to message id: ${id}`));
                             }, this.responseTimeout);
 
                             this.once(responseEvent, (message) => {
                                 clearTimeout(timeout);
-                                resolve(message)
+                                res(message)
                             });
                         })
                         resolve(response)
                     }
                     else {
-                        await new Promise((response) => this.once("message", response));
-                        resolve()
+                        try {
+                            await new Promise((response) => this.once("message", response));
+                            resolve()
+                        } catch(e) {
+                            console.error(e);
+                        }
                     }
                 }
                 catch (error) {

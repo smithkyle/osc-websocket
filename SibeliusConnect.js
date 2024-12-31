@@ -55,7 +55,6 @@ class SibeliusConnect extends WebSocketClient {
     }
 
     _processHandshake(data) {
-        console.log(data)
         if (data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log('Received sessionToken:', this.sessionToken);
@@ -116,7 +115,7 @@ class SibeliusConnect extends WebSocketClient {
         }
 
         try {
-            super.send(message);
+            await super.send(message);
         }
         catch (e) {
             console.error('caught error', e)
