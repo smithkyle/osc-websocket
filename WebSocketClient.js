@@ -7,7 +7,7 @@ class WebSocketClient extends EventEmitter {
         this.url = url;
         this.reconnectInterval = options.reconnectInterval || 2000;
         this.maxReconnectAttempts = options.maxReconnectAttempts || 10;
-        this.responseTimeout = options.responseTimeout || 10000;
+        this.responseTimeout = options.responseTimeout || 5000;
 
         this.socket = null;
         this.reconnectAttempts = 0;
@@ -18,7 +18,7 @@ class WebSocketClient extends EventEmitter {
         this.processingQueue = false;
     }
 
-    async connect() {
+    connect() {
         return new Promise((resolve, reject) => {
             this.socket = new WebSocket(this.url)
 
@@ -91,7 +91,7 @@ class WebSocketClient extends EventEmitter {
         // Reject pending promises in the message queue
         while (this.messageQueue.length) {
             const { reject } = this.messageQueue.shift();
-            reject(new Error("WebSocket closed during message queue processing"));
+            reject(new Error("WebSocket closed during message queue processing - dumping message"));
         }
     
         // Emit a cleanup or failure event, if necessary
@@ -104,6 +104,7 @@ class WebSocketClient extends EventEmitter {
         this.emit("open");
         resolve();
         this.processingQueue = false;
+        console.log(this.messageQueue);
         this._processQueue();
     }
 

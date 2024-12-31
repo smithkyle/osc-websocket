@@ -15,15 +15,11 @@ class SibeliusConnect extends WebSocketClient {
     }
 
     onOpen(resolve) {
-        let savedMessageQueue = this.messageQueue;
-        this.messageQueue = [];
+        this.on('handshakeDone', () => super.onOpen(resolve));
 
         this._sendHandshake();
-
-        this.messageQueue = savedMessageQueue;
-        savedMessageQueue = []
         
-        super.onOpen(resolve);
+        // super.onOpen(resolve);
     }
 
     _sendHandshake() {
@@ -45,7 +41,9 @@ class SibeliusConnect extends WebSocketClient {
             message.plugins = this.plugins;
         }
 
-        super.send(message);
+        // use the socket's send method to avoid the messageQueue
+        this.socket.send(JSON.stringify(message));
+        console.log("Message sent:", message);
 
         if (message.sessionToken) {
             // Sibelius doesn't send a response if reconnecting with a sessionToken,
@@ -60,6 +58,7 @@ class SibeliusConnect extends WebSocketClient {
             console.log('Received sessionToken:', this.sessionToken);
             saveJSON(SIB_SESSION_FILE, data, (e) => console.log("unable to save sessionToken", e));
             this.handshakeDone = true;
+            this.emit('handshakeDone');
         }
         else {
             console.error("Handshake failed");
@@ -71,9 +70,11 @@ class SibeliusConnect extends WebSocketClient {
 
         if (!this.handshakeDone && data.sessionToken) {
             this._processHandshake(data);
+            console.log("Message received:", data);
         }
-        
-        super.onMessage(event);
+        else {        
+            super.onMessage(event);
+        }
 
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data);
@@ -109,16 +110,16 @@ class SibeliusConnect extends WebSocketClient {
         })
     }
 
-    async send(message) {
+    send(message) {
         if (!this.socket) {
             this.connect();
         }
 
         try {
-            await super.send(message);
+            super.send(message);
         }
         catch (e) {
-            console.error('caught error', e)
+            console.error(e.message)
         }
     }
 }

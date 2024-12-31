@@ -1,4 +1,8 @@
+// const fs = nativeRequire('fs');
+
 const WebSocketClient = require('./WebSocketClient.js')
+
+const DOR_SESSION_FILE = 'dorico-session.json'
 
 class DoricoRemote extends WebSocketClient {
     constructor({ appName = 'Dorico Remote', callbackAddress = '/DoricoCallback' } = {}) {
@@ -10,15 +14,11 @@ class DoricoRemote extends WebSocketClient {
     }
 
     onOpen(resolve) {
-        let savedMessageQueue = this.messageQueue;
-        this.messageQueue = [];
+        this.on('handshakeDone', () => super.onOpen(resolve));
 
         this._sendHandshake();
 
-        // this.messageQueue = savedMessageQueue;
-        // savedMessageQueue = []
-        
-        super.onOpen(resolve);
+        // super.onOpen(resolve);
     }
 
     _sendHandshake() {
@@ -27,16 +27,22 @@ class DoricoRemote extends WebSocketClient {
             clientName: this.appName,
             handshakeVersion: '1.0',
         };
+
+        const sessionData = loadJSON(DOR_SESSION_FILE, (e) => {
+            console.log(`${DOR_SESSION_FILE} not found - starting new session`)
+        });
+        this.sessionToken = sessionData?.sessionToken;
         
         if (this.sessionToken) {
             message.sessionToken = this.sessionToken;
         }
         
-        super.send(message);
+        // use the socket's send method to avoid the messageQueue
+        this.socket.send(JSON.stringify(message));
+        console.log("Message sent:", message);
     }
 
     _processHandshake(data) {
-        console.log(data);
         if (data.message === 'sessiontoken' && data.sessionToken) {
             this.sessionToken = data.sessionToken;
             console.log(`Received sessiontoken: ${this.sessionToken} - completing handshake`);
@@ -46,39 +52,72 @@ class DoricoRemote extends WebSocketClient {
                 sessionToken: this.sessionToken
             }
 
-            super.send(message);
+            this.socket.send(JSON.stringify(message));
+            console.log("Message sent:", message);
         }
         else if (data.message === 'response' && data.code === 'kConnected') {
             console.log(`Handshake complete for ${this.appName}`);
-            this.handshakeDone = true;  // Handshake is now complete
-            this._processQueue();  // Now safe to send queued messages
+            saveJSON(DOR_SESSION_FILE, { sessionToken: this.sessionToken }, (e) => console.log("unable to save sessionToken", e));
+            this.handshakeDone = true;
+            this.emit('handshakeDone');
         }
     }
 
     onMessage(event) {
         const data = JSON.parse(event.data);
         
-        if (!this.handshakeDone && data.message === 'sessiontoken') {
+        if (!this.handshakeDone) {
             this._processHandshake(data);
+            console.log("Message received:", data);
         }
-        
-        super.onMessage(event);
+        else {
+            super.onMessage(event);
+        }
         
         if (this.callbackAddress && this.callbackAddress.length > 0) {
             receive(this.callbackAddress, data)
         }
     }
 
-    async send(message) {
+    onClose(event) {
+        if (event.code === 1000) {
+            console.log('Connection closing cleanly - will attempt a fresh connection');
+            // this.sessionToken = null;
+            // this.handshakeDone = false;
+            this.cleanupSocket();
+            // this.shouldReconnect = true;
+            
+            // this._removeSessionFile(`${__dirname}/${DOR_SESSION_FILE}`);
+        }
+
+        super.onClose(event)
+    }
+
+    // _removeSessionFile(file) {
+    //     if (!fs.existsSync(file)) {
+    //         return;
+    //     }
+    //     fs.unlink(file, (error) => {
+    //         if (error) {
+    //             console.warn(`Error removing ${file}`, error);
+    //             this.shouldReconnect = false;
+    //             return;
+    //         }
+
+    //         console.log(`Removed ${file}`);
+    //     })
+    // }
+
+    send(message) {
         if (!this.socket) {
             this.connect();
         }
 
         try {
-            await super.send(message);
+            super.send(message);
         }
         catch (e) {
-            console.error('caught error', e)
+            console.error(e.message)
         }
     }
 }
