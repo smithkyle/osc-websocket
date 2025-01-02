@@ -1,4 +1,4 @@
-// const fs = nativeRequire('fs');
+const fs = nativeRequire('fs');
 
 const WebSocketClient = require('./WebSocketClient.js')
 
@@ -14,7 +14,7 @@ class DoricoRemote extends WebSocketClient {
     }
 
     onOpen(resolve) {
-        this.on('handshakeDone', () => super.onOpen(resolve));
+        this.once('handshakeDone', () => super.onOpen(resolve));
 
         this._sendHandshake();
 
@@ -82,39 +82,42 @@ class DoricoRemote extends WebSocketClient {
     onClose(event) {
         if (event.code === 1000) {
             console.log('Connection closing cleanly - will attempt a fresh connection');
-            // this.sessionToken = null;
-            // this.handshakeDone = false;
-            this.cleanupSocket();
-            // this.shouldReconnect = true;
             
-            // this._removeSessionFile(`${__dirname}/${DOR_SESSION_FILE}`);
+            this._removeSessionFile(`${__dirname}/${DOR_SESSION_FILE}`);
+            this.sessionToken = null;
+            
+            this.cleanupSocket();
+            
+            this.shouldReconnect = true;
         }
+
+        this.handshakeDone = false;
 
         super.onClose(event)
     }
 
-    // _removeSessionFile(file) {
-    //     if (!fs.existsSync(file)) {
-    //         return;
-    //     }
-    //     fs.unlink(file, (error) => {
-    //         if (error) {
-    //             console.warn(`Error removing ${file}`, error);
-    //             this.shouldReconnect = false;
-    //             return;
-    //         }
+    _removeSessionFile(file) {
+        if (!fs.existsSync(file)) {
+            return;
+        }
+        fs.unlink(file, (error) => {
+            if (error) {
+                console.warn(`Error removing ${file}`, error);
+                this.shouldReconnect = false;
+                return;
+            }
 
-    //         console.log(`Removed ${file}`);
-    //     })
-    // }
+            console.log(`Removed ${file}`);
+        })
+    }
 
-    send(message) {
+    async send(message) {
         if (!this.socket) {
             this.connect();
         }
 
         try {
-            super.send(message);
+            await super.send(message)//.catch(e => console.error(e.message));
         }
         catch (e) {
             console.error(e.message)

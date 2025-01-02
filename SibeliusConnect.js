@@ -48,6 +48,7 @@ class SibeliusConnect extends WebSocketClient {
         if (message.sessionToken) {
             // Sibelius doesn't send a response if reconnecting with a sessionToken,
             // so we will simulate receiving the sessionToken again
+            this.handshakeDone = false;
             this.onMessage({ data: JSON.stringify(sessionData) })
         }
     }
@@ -84,13 +85,16 @@ class SibeliusConnect extends WebSocketClient {
     onClose(event) {
         if (event.code === 1000) {
             console.log('Connection closing cleanly - will attempt a fresh connection');
-            this.sessionToken = null;
-            this.handshakeDone = false;
-            this.cleanupSocket();
-            this.shouldReconnect = true;
-            
+
             this._removeSessionFile(`${__dirname}/${SIB_SESSION_FILE}`);
+            this.sessionToken = null;
+
+            this.cleanupSocket();
+            
+            this.shouldReconnect = true;
         }
+
+        this.handshakeDone = false;
 
         super.onClose(event)
     }
@@ -110,13 +114,13 @@ class SibeliusConnect extends WebSocketClient {
         })
     }
 
-    send(message) {
+    async send(message) {
         if (!this.socket) {
             this.connect();
         }
 
         try {
-            super.send(message);
+            await super.send(message)//.catch(e => console.error(e.message));
         }
         catch (e) {
             console.error(e.message)

@@ -44,6 +44,7 @@ class WebSocketClient extends EventEmitter {
 
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error("Max reconnect attempts reached");
+            this.shouldReconnect = false;
             this.cleanupSocket();
             this.emit("reconnect_failed");
             return;
@@ -87,7 +88,7 @@ class WebSocketClient extends EventEmitter {
         this.reconnectAttempts = 0;
         this.shouldReconnect = false;
         this.processingQueue = false;
-
+        
         // Reject pending promises in the message queue
         while (this.messageQueue.length) {
             const { reject } = this.messageQueue.shift();
@@ -104,7 +105,6 @@ class WebSocketClient extends EventEmitter {
         this.emit("open");
         resolve();
         this.processingQueue = false;
-        console.log(this.messageQueue);
         this._processQueue();
     }
 
