@@ -9,6 +9,6 @@
   "author": "Kyle Smith",
   "license": "ISC",
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "^8.18.1"
   }
 }
